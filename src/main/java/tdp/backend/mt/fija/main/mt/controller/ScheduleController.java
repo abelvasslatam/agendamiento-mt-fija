@@ -21,8 +21,8 @@ public class ScheduleController {
 	@GetMapping(value = "/schedule", produces = "application/json; charset=UTF-8")
 	public void getTechnicalAppointments() {
 		try {
-//			ServiceCallEventsMt s = service.findById(10919L);
-//			System.out.println(s);
+			ServiceCallEventsMt s = service.findById(10919L);
+			System.out.println(s);
 			
 			ServiceCallEventsFija sf = serviceFija.findById(4160382L);
 			System.out.println(sf);
