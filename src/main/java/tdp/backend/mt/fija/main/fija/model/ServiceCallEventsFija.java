@@ -13,13 +13,14 @@ import javax.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
+import tdp.backend.mt.fija.common.util.AServiceCallEvents;
 
 @Entity
 @Table(name = "service_call_events", schema = "ibmx_a07e6d02edaf552")
 @Getter
 @Setter
 @ToString
-public class ServiceCallEventsFija {
+public class ServiceCallEventsFija extends AServiceCallEvents{
 	@Id
 	@GeneratedValue(strategy=GenerationType.IDENTITY)
 	private Long id;
