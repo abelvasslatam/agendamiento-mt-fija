@@ -26,7 +26,7 @@ public class UtilMethods {
         return config;
     }
     public static Timestamp getFechaActual(){
-        Timestamp fecha = new Timestamp(System.currentTimeMillis() - 18000000);
+        Timestamp fecha = new Timestamp(System.currentTimeMillis() - 18000000); // -5 horas
         return fecha;
     }
 

@@ -1,9 +1,6 @@
 package tdp.backend.mt.fija.main.mt.service.impl;
 
-import java.util.List;
-
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
 import tdp.backend.mt.fija.main.mt.model.ServiceCallEventsMt;
@@ -16,17 +13,17 @@ import tdp.backend.mt.fija.main.mt.service.IServiceCallEventsMtService;
 public class ServiceCallEventsMtServiceImpl implements IServiceCallEventsMtService{
 	
 	@Autowired
-	private ServiceCallEventsMtRepository repository;
+	private ServiceCallEventsMtRepository serviceCallEventsMtRepository;
 
-	@Override
-	public void registerEvent() {
-		// TODO Auto-generated method stub
-		
-	}
 
 	@Override
 	public ServiceCallEventsMt findById(Long id) {
-		return repository.findById(id).get();
+		return serviceCallEventsMtRepository.findById(id).get();
+	}
+
+	@Override
+	public ServiceCallEventsMt saveOrUpdate(ServiceCallEventsMt sceMt) {
+		return serviceCallEventsMtRepository.save(sceMt);
 	}
 
 

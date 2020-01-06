@@ -34,8 +34,9 @@ public class MtDataSource {
         HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
         em.setJpaVendorAdapter(vendorAdapter);
         HashMap<String, Object> properties = new HashMap<>();
-        properties.put("hibernate.dialect", env.getProperty("hibernate.dialect"));
-        properties.put("hibernate.show-sql",env.getProperty("jdbc.show-sql"));
+        properties.put("spring.jpa.database-platform", env.getProperty("spring.jpa.database-platform"));
+        properties.put("spring.jpa.show-sql",env.getProperty("spring.jpa.show-sql"));
+        properties.put("spring.jpa.properties.hibernate.format_sql",env.getProperty("spring.jpa.properties.hibernate.format_sql"));
         em.setJpaPropertyMap(properties);
         return em;
     }

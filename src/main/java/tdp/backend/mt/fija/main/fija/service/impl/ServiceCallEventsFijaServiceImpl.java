@@ -11,11 +11,16 @@ import tdp.backend.mt.fija.main.fija.service.IServiceCallEventsFijaService;
 public class ServiceCallEventsFijaServiceImpl implements IServiceCallEventsFijaService{
 	
 	@Autowired
-	ServiceCallEventsFijaRepository repository;
+	ServiceCallEventsFijaRepository serviceCallEventsFijaRepository;
 
 	@Override
 	public ServiceCallEventsFija findById(Long id) {
-		return repository.findById(id).get();
+		return serviceCallEventsFijaRepository.findById(id).get();
+	}
+
+	@Override
+	public ServiceCallEventsFija saveOrUpdate(ServiceCallEventsFija sceFija) {
+		return serviceCallEventsFijaRepository.save(sceFija);
 	}
 
 }

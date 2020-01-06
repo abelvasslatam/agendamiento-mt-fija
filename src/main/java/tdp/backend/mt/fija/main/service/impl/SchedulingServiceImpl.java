@@ -1,5 +1,8 @@
 package tdp.backend.mt.fija.main.service.impl;
 
+import java.sql.Timestamp;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import lombok.extern.slf4j.Slf4j;
@@ -8,7 +11,10 @@ import tdp.backend.mt.fija.common.client.ClientResult;
 import tdp.backend.mt.fija.common.domain.ApiResponse;
 import tdp.backend.mt.fija.common.domain.Response;
 import tdp.backend.mt.fija.common.util.ServiceConstants;
+import tdp.backend.mt.fija.common.util.UtilMethods;
 import tdp.backend.mt.fija.common.util.Xhttp;
+import tdp.backend.mt.fija.main.fija.service.IServiceCallEventsFijaService;
+import tdp.backend.mt.fija.main.mt.service.IServiceCallEventsMtService;
 import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.AvailabilityTechnicalAppointmentsClient;
 import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.AvailabiltyTechAppointmentRequestFront;
 import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.Body;
@@ -20,6 +26,12 @@ import tdp.backend.mt.fija.main.service.SchedulingService;
 @Service
 @Slf4j
 public class SchedulingServiceImpl implements SchedulingService{
+	
+	@Autowired
+	IServiceCallEventsMtService serviceCallEventsMtService;
+	
+	@Autowired
+	IServiceCallEventsFijaService serviceCallEventsFijaService;
 
 	@Override
 	public Response<TechnicalAppointmentsResponse> getAvailabilityTechnicalAppointments(
@@ -46,7 +58,36 @@ public class SchedulingServiceImpl implements SchedulingService{
 		//se obtiene algo como esto
 		requestBody = getRequestBody();
 		
-		ClientResult<ApiResponse> result = client.post(requestBody);
+		Timestamp dateTimeRequest = UtilMethods.getFechaActual();
+		
+		ClientResult<ApiResponse> result = client.post(requestBody, request.getTipoCliente());
+		
+		Timestamp dateTimeResponse = UtilMethods.getFechaActual();
+		
+		
+		if(request.getTipoCliente().equals("MT")) {
+			
+			result.getSceMt().setSourceAppVersion(xhttp.getAppVersion());
+			result.getSceMt().setSourceApp(xhttp.getAppSource());;
+			result.getSceMt().setDocNumber(xhttp.getCustomer());;
+			result.getSceMt().setOrderId(xhttp.getOrdenMT() != null ? !xhttp.getOrdenMT().equals("") ? ("MT" + xhttp.getOrdenMT()) : "" : "");
+			result.getSceMt().setUsername(xhttp.getUsuario());
+			result.getSceMt().setTag("SERVICE_CALL");
+			result.getSceMt().setDateTimeRequest(dateTimeRequest);
+			result.getSceMt().setDateTimeResponse(dateTimeResponse);
+			
+			serviceCallEventsMtService.saveOrUpdate(result.getSceMt());
+		} else if (request.getTipoCliente().equals("FIJA")) {
+			result.getSceFija().setSourceAppVersion(xhttp.getAppVersion());
+			result.getSceFija().setSourceApp(xhttp.getAppSource());;
+			result.getSceFija().setDocNumber(xhttp.getCustomer());;
+			result.getSceFija().setOrderId(xhttp.getOrdenMT() != null ? !xhttp.getOrdenMT().equals("") ? ("MT" + xhttp.getOrdenMT()) : "" : "");
+			result.getSceFija().setUsername(xhttp.getUsuario());
+			result.getSceFija().setTag("SERVICE_CALL");
+			result.getSceFija().setEventDateTime(dateTimeRequest);
+			serviceCallEventsFijaService.saveOrUpdate(result.getSceFija());
+		}
+		
 		
 		//result = null;
 		if (result == null || !result.isSuccess() || result.getResult() == null) {

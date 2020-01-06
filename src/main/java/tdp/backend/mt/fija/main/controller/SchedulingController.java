@@ -67,7 +67,7 @@ public class SchedulingController {
 			response = schedulingService.getAvailabilityTechnicalAppointments(request, xhttp);
 		} catch (Exception e) {
 			log.error("Error getAvailabilityTechnicalAppointments Controller.", e);
-			response.setResponseMessage("Error getTechnicalAppointments Controller.");
+			response.setResponseMessage("Error getTechnicalAppointments Controller, problemas en el servidor MT-fija");
             response.setResponseCode(ServiceConstants.SERVICE_ERROR);
 		}
 		
