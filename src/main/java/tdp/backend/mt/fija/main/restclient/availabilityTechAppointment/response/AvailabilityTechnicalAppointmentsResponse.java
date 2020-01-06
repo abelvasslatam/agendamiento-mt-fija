@@ -5,15 +5,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import lombok.Data;
 
-
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Data
-public class Body {
-	
+public class AvailabilityTechnicalAppointmentsResponse {
 	@JsonProperty("header")
-	private String header;
+	private Header header;
 	
-	@JsonProperty("capacityFicticious")
-	private CapacityFicticious capacityFicticious;
-	
+	@JsonProperty("body")
+	private Body body;
+
 }

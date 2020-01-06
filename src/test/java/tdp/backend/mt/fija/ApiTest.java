@@ -9,7 +9,7 @@ import org.springframework.web.client.RestTemplate;
 import lombok.extern.slf4j.Slf4j;
 import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.Body;
 import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.Header;
-import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.TechnicalAppointmentsRequest;
+import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.AvailabilityTechnicalAppointmentsRequest;
 
 @SpringBootTest
 @Slf4j
@@ -17,7 +17,7 @@ public class ApiTest {
 	
 	@Test
 	void contextLoads() {
-		TechnicalAppointmentsRequest requestBody = new TechnicalAppointmentsRequest();
+		AvailabilityTechnicalAppointmentsRequest requestBody = new AvailabilityTechnicalAppointmentsRequest();
 		Header headerBody =  new Header();
 		
 		headerBody.setAppName("APP_WEB_FRONT_TRAZABILIDAD");
@@ -48,7 +48,7 @@ public class ApiTest {
 		headers.set("X-IBM-Client-Secret", "0b4c6989-c4ad-4624-b444-df32d0233b8a");
 		headers.set("Authorization", "Basic dHJhY2VhYmlsaXR5VXNlcjptMFYxc3RAUkBnM25kNG0xM250MA==");
 		
-		HttpEntity<TechnicalAppointmentsRequest> request = new HttpEntity<>(requestBody, headers);
+		HttpEntity<AvailabilityTechnicalAppointmentsRequest> request = new HttpEntity<>(requestBody, headers);
 		
 		RestTemplate restTemplate = new RestTemplate();
 		String json = restTemplate.postForObject( "https://agendamiento-trazabilidad-test.mybluemix.net/schedule/beforesales/availability-technical-appointment", request, String.class);

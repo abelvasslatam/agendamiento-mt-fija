@@ -19,8 +19,12 @@ import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.Availabil
 import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.AvailabiltyTechAppointmentRequestFront;
 import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.Body;
 import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.Header;
-import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.TechnicalAppointmentsRequest;
-import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.response.TechnicalAppointmentsResponse;
+import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.AvailabilityTechnicalAppointmentsRequest;
+import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.response.AvailabilityTechnicalAppointmentsResponse;
+import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.ScheduleTechnicalAppointmentClient;
+import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.ScheduleTechnicalAppointmentRequestFront;
+import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.request.ScheduleTechnicalAppointmentRequest;
+import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.response.ScheduleTechnicalAppointmentResponse;
 import tdp.backend.mt.fija.main.service.SchedulingService;
 
 @Service
@@ -34,29 +38,29 @@ public class SchedulingServiceImpl implements SchedulingService{
 	IServiceCallEventsFijaService serviceCallEventsFijaService;
 
 	@Override
-	public Response<TechnicalAppointmentsResponse> getAvailabilityTechnicalAppointments(
+	public Response<AvailabilityTechnicalAppointmentsResponse> getAvailabilityTechnicalAppointments(
 			AvailabiltyTechAppointmentRequestFront request, Xhttp xhttp) {
 		
-		Response<TechnicalAppointmentsResponse> response = new Response<>();
+		Response<AvailabilityTechnicalAppointmentsResponse> response = new Response<>();
 		
 		int retryCount = 3;
-		response = callApi(request,retryCount, xhttp);
+		response = callApiAvailabilityTechnicalAppointment(request,retryCount, xhttp);
 
 		return response;
 	}
 	
-	private Response<TechnicalAppointmentsResponse> callApi(AvailabiltyTechAppointmentRequestFront request, int retryCount, Xhttp xhttp) {
-		Response<TechnicalAppointmentsResponse> response = new Response<>();
+	private Response<AvailabilityTechnicalAppointmentsResponse> callApiAvailabilityTechnicalAppointment(AvailabiltyTechAppointmentRequestFront request, int retryCount, Xhttp xhttp) {
+		Response<AvailabilityTechnicalAppointmentsResponse> response = new Response<>();
 		
 		
 		AvailabilityTechnicalAppointmentsClient client = new AvailabilityTechnicalAppointmentsClient(new ClientConfig());
 		
-		TechnicalAppointmentsRequest requestBody = new TechnicalAppointmentsRequest();
+		AvailabilityTechnicalAppointmentsRequest requestBody = new AvailabilityTechnicalAppointmentsRequest();
 		//setear
 		//lógica para armar el request
 		
 		//se obtiene algo como esto
-		requestBody = getRequestBody();
+		requestBody = getRequestBodyAva();
 		
 		Timestamp dateTimeRequest = UtilMethods.getFechaActual();
 		
@@ -88,13 +92,11 @@ public class SchedulingServiceImpl implements SchedulingService{
 			serviceCallEventsFijaService.saveOrUpdate(result.getSceFija());
 		}
 		
-		
-		//result = null;
 		if (result == null || !result.isSuccess() || result.getResult() == null) {
 			if(retryCount > 0) {
 				log.info("No se obtuvo respuesta correcta del servicio, se procede a reintentar");
 				retryCount --;
-				return callApi(request, retryCount, xhttp);
+				return callApiAvailabilityTechnicalAppointment(request, retryCount, xhttp);
 			} else {
 				log.error("Error en la petición del servicio, reintentos culminados");
 				response.setResponseCode(ServiceConstants.SERVICE_ERROR);
@@ -108,7 +110,7 @@ public class SchedulingServiceImpl implements SchedulingService{
 			
 			ApiResponse apiResponse = result.getResult();
 			
-			TechnicalAppointmentsResponse responseData = apiResponse.getResponse();
+			AvailabilityTechnicalAppointmentsResponse responseData = apiResponse.getResponseAvailability();
 			
 			response.setResponseCode(ServiceConstants.SERVICE_SUCCESS);
 			response.setResponseMessage("OK");
@@ -119,8 +121,8 @@ public class SchedulingServiceImpl implements SchedulingService{
 		return response;
 	}
 	
-	private TechnicalAppointmentsRequest getRequestBody() {
-		TechnicalAppointmentsRequest requestBody = new TechnicalAppointmentsRequest();
+	private AvailabilityTechnicalAppointmentsRequest getRequestBodyAva() {
+		AvailabilityTechnicalAppointmentsRequest requestBody = new AvailabilityTechnicalAppointmentsRequest();
 		Header headerBody =  new Header();
 		
 		headerBody.setAppName("APP_WEB_FRONT_TRAZABILIDAD");
@@ -148,5 +150,137 @@ public class SchedulingServiceImpl implements SchedulingService{
 		
 		return requestBody;
 	}
+
+	@Override
+	public Response<ScheduleTechnicalAppointmentResponse> getScheduleTechnicalAppointment(
+			ScheduleTechnicalAppointmentRequestFront request, Xhttp xhttp) {
+		
+
+		
+		Response<ScheduleTechnicalAppointmentResponse> response = new Response<>();
+		
+		int retryCount = 3;
+		response = callApiScheduleTechnicalAppointment(request,retryCount, xhttp);
+
+		return response;
+	}
+	
+	private Response<ScheduleTechnicalAppointmentResponse> callApiScheduleTechnicalAppointment(ScheduleTechnicalAppointmentRequestFront request, int retryCount, Xhttp xhttp) {
+		Response<ScheduleTechnicalAppointmentResponse> response = new Response<>();
+		
+		
+		ScheduleTechnicalAppointmentClient client = new ScheduleTechnicalAppointmentClient(new ClientConfig());
+		
+		ScheduleTechnicalAppointmentRequest requestBody = new ScheduleTechnicalAppointmentRequest();
+		//setear
+		//lógica para armar el request
+		
+		//se obtiene algo como esto
+		requestBody = getRequestBodySch();
+		
+		Timestamp dateTimeRequest = UtilMethods.getFechaActual();
+		
+		ClientResult<ApiResponse> result = client.post(requestBody, request.getTipoCliente());
+		
+		Timestamp dateTimeResponse = UtilMethods.getFechaActual();
+		
+		if(request.getTipoCliente().equals("MT")) {
+			
+			result.getSceMt().setSourceAppVersion(xhttp.getAppVersion());
+			result.getSceMt().setSourceApp(xhttp.getAppSource());;
+			result.getSceMt().setDocNumber(xhttp.getCustomer());;
+			result.getSceMt().setOrderId(xhttp.getOrdenMT() != null ? !xhttp.getOrdenMT().equals("") ? ("MT" + xhttp.getOrdenMT()) : "" : "");
+			result.getSceMt().setUsername(xhttp.getUsuario());
+			result.getSceMt().setTag("SERVICE_CALL");
+			result.getSceMt().setDateTimeRequest(dateTimeRequest);
+			result.getSceMt().setDateTimeResponse(dateTimeResponse);
+			
+			serviceCallEventsMtService.saveOrUpdate(result.getSceMt());
+		} else if (request.getTipoCliente().equals("FIJA")) {
+			result.getSceFija().setSourceAppVersion(xhttp.getAppVersion());
+			result.getSceFija().setSourceApp(xhttp.getAppSource());;
+			result.getSceFija().setDocNumber(xhttp.getCustomer());;
+			result.getSceFija().setOrderId(xhttp.getOrdenMT() != null ? !xhttp.getOrdenMT().equals("") ? ("MT" + xhttp.getOrdenMT()) : "" : "");
+			result.getSceFija().setUsername(xhttp.getUsuario());
+			result.getSceFija().setTag("SERVICE_CALL");
+			result.getSceFija().setEventDateTime(dateTimeRequest);
+			serviceCallEventsFijaService.saveOrUpdate(result.getSceFija());
+		}
+		
+		
+		if (result == null || !result.isSuccess() || result.getResult() == null) {
+			if(retryCount > 0) {
+				log.info("No se obtuvo respuesta correcta del servicio, se procede a reintentar");
+				retryCount --;
+				return callApiScheduleTechnicalAppointment(request, retryCount, xhttp);
+			} else {
+				log.error("Error en la petición del servicio, reintentos culminados");
+				response.setResponseCode(ServiceConstants.SERVICE_ERROR);
+                response.setResponseMessage("Error del servidor en el consumo del api: /schedule/beforesales/schedule-technical-appointments");
+                response.setResponseData(null);
+                return response;
+				
+			}
+		} else {
+			//aqui cuando se tiene la respuesta del api
+			
+			ApiResponse apiResponse = result.getResult();
+			
+			ScheduleTechnicalAppointmentResponse responseData = apiResponse.getResponseSchedule();
+			
+			response.setResponseCode(ServiceConstants.SERVICE_SUCCESS);
+			response.setResponseMessage("OK");
+			response.setResponseData(responseData);
+			
+		}
+		
+		return response;
+		
+		
+		
+		
+	}
+	
+	
+	private ScheduleTechnicalAppointmentRequest getRequestBodySch() {
+		ScheduleTechnicalAppointmentRequest requestBody = new ScheduleTechnicalAppointmentRequest();
+		
+		tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.request.Header headerBody =  new tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.request.Header();
+		
+		
+		headerBody.setAppName("MOVISTARTOTAL");
+		headerBody.setUser("user_movistarTotal");
+		headerBody.setOperation("scheduleAppointments");
+		headerBody.setMessageId("57559b0c-5755-5755-5755-57559b0ceb0e");
+		headerBody.setTimestamp("2019-11-21T04:21:32.518");
+
+		
+		tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.request.Body body = new tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.request.Body();
+		body.setOriginCode("VF");
+		body.setSaleCode("-LpeiZcPQKfAfiw4slNe");
+		body.setBucket("BK_COBRA_ZONA5_SJ_MASIVO");
+		body.setScheduleDate("2020-01-05");
+		body.setScheduleRange("AM");
+		body.setCoordinateX("-77.0902642");
+		body.setCoordinateY("-12.0386869");
+		body.setDocumentType("DNI");
+		body.setDocumentNumber("23451623");
+		body.setCustomerName("RODRIGO");
+		body.setCustomerPatSurname("PORTILLA");
+		body.setCustomerMatSurname("IBARRA");
+		body.setCommercialOp("Alta Componente BA");
+		body.setInternetTech(null);
+		body.setTechnologyTV(null);
+		body.setCodProductPSI("P004");
+		
+		requestBody.setHeader(headerBody);
+		requestBody.setBody(body);
+		
+		return requestBody;
+	}
+	
+	
+	
+	
 
 }

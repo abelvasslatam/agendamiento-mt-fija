@@ -23,7 +23,9 @@ import tdp.backend.mt.fija.main.fija.service.IServiceCallEventsFijaService;
 import tdp.backend.mt.fija.main.mt.model.ServiceCallEventsMt;
 import tdp.backend.mt.fija.main.mt.service.IServiceCallEventsMtService;
 import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.AvailabiltyTechAppointmentRequestFront;
-import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.response.TechnicalAppointmentsResponse;
+import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.response.AvailabilityTechnicalAppointmentsResponse;
+import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.ScheduleTechnicalAppointmentRequestFront;
+import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.response.ScheduleTechnicalAppointmentResponse;
 import tdp.backend.mt.fija.main.service.SchedulingService;
 
 @RestController
@@ -43,7 +45,7 @@ public class SchedulingController {
 	private static final Logger logger = LogManager.getLogger();
 	
 	@PostMapping(value = "/availability-technical-appointments", produces = "application/json; charset=UTF-8")
-	public Response<TechnicalAppointmentsResponse> 
+	public Response<AvailabilityTechnicalAppointmentsResponse> 
 	getAvailabilityTechnicalAppointments
 	(@RequestBody AvailabiltyTechAppointmentRequestFront request,
 		HttpServletRequest httpResquest,
@@ -53,7 +55,7 @@ public class SchedulingController {
 	    @RequestHeader(name = "X_HTTP_ORDERMT") String X_HTTP_ORDERMT,
 	    @RequestHeader(name = "X_HTTP_USUARIO") String X_HTTP_USUARIO) {
 		
-		Response<TechnicalAppointmentsResponse> response = new Response<>();
+		Response<AvailabilityTechnicalAppointmentsResponse> response = new Response<>();
 		
 		
 		Xhttp xhttp = new Xhttp();
@@ -66,8 +68,8 @@ public class SchedulingController {
         try {
 			response = schedulingService.getAvailabilityTechnicalAppointments(request, xhttp);
 		} catch (Exception e) {
-			log.error("Error getAvailabilityTechnicalAppointments Controller.", e);
-			response.setResponseMessage("Error getTechnicalAppointments Controller, problemas en el servidor MT-fija");
+			log.error("Error method getAvailabilityTechnicalAppointments -> SchedulingController", e);
+			response.setResponseMessage("Error getTechnicalAppointments -> SchedulingController, problemas en el servidor MT-fija agendamiento");
             response.setResponseCode(ServiceConstants.SERVICE_ERROR);
 		}
 		
@@ -75,6 +77,42 @@ public class SchedulingController {
 		return response;
 		
 	}
+	
+	@PostMapping(value = "/schedule-technical-appointments", produces = "application/json; charset=UTF-8")
+	public Response<ScheduleTechnicalAppointmentResponse> 
+	getScheduleTechnicalAppointments
+	(@RequestBody ScheduleTechnicalAppointmentRequestFront request,
+		HttpServletRequest httpResquest,
+		@RequestHeader(name = "X_HTTP_APPSOURCE") String X_HTTP_APPSOURCE,
+	    @RequestHeader(name = "X_HTTP_APPVERSION") String X_HTTP_APPVERSION,
+	    @RequestHeader(name = "X_HTTP_CUSTOMER") String X_HTTP_CUSTOMER,
+	    @RequestHeader(name = "X_HTTP_ORDERMT") String X_HTTP_ORDERMT,
+	    @RequestHeader(name = "X_HTTP_USUARIO") String X_HTTP_USUARIO) {
+		
+		Response<ScheduleTechnicalAppointmentResponse> response = new Response<>();
+		
+		
+		Xhttp xhttp = new Xhttp();
+        xhttp.setAppSource(X_HTTP_APPSOURCE);
+        xhttp.setAppVersion(X_HTTP_APPVERSION);
+        xhttp.setCustomer(X_HTTP_CUSTOMER);
+        xhttp.setOrdenMT(X_HTTP_ORDERMT);
+        xhttp.setUsuario(X_HTTP_USUARIO);
+		
+        
+        try {
+			response = schedulingService.getScheduleTechnicalAppointment(request, xhttp);
+		} catch (Exception e) {
+			log.error("Error method getScheduleTechnicalAppointments -> SchedulingController", e);
+			response.setResponseMessage("Error getScheduleTechnicalAppointments -> SchedulingController, problemas en el servidor MT-fija agendamiento");
+            response.setResponseCode(ServiceConstants.SERVICE_ERROR);
+		}
+		
+        LogVass.finishController(logger, "getScheduleTechnicalAppointments", response);
+		return response;
+		
+	}
+	
 	
 	@GetMapping(value = "/sc", produces = "application/json; charset=UTF-8")
 	public void getTechnicalAppointments() {

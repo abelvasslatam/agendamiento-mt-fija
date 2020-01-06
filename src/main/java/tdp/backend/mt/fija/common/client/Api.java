@@ -11,9 +11,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.extern.slf4j.Slf4j;
-import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.Body;
-import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.Header;
-import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.TechnicalAppointmentsRequest;
 
 @Slf4j
 public class Api {
@@ -30,7 +27,7 @@ public class Api {
 
 		//consumo
 		
-		TechnicalAppointmentsRequest requestBody = (TechnicalAppointmentsRequest) request;
+		//AvailabilityTechnicalAppointmentsRequest requestBody = (AvailabilityTechnicalAppointmentsRequest) request;
 
 		
 		HttpHeaders headers = new HttpHeaders();
