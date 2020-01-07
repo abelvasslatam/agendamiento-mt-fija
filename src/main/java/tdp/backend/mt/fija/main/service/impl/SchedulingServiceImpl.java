@@ -1,6 +1,8 @@
 package tdp.backend.mt.fija.main.service.impl;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,11 @@ import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.ScheduleTechn
 import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.ScheduleTechnicalAppointmentRequestFront;
 import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.request.ScheduleTechnicalAppointmentRequest;
 import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.response.ScheduleTechnicalAppointmentResponse;
+import tdp.backend.mt.fija.main.restclient.updateCustomer.UpdateCustomerClient;
+import tdp.backend.mt.fija.main.restclient.updateCustomer.UpdateCustomerRequestFront;
+import tdp.backend.mt.fija.main.restclient.updateCustomer.request.Contacts;
+import tdp.backend.mt.fija.main.restclient.updateCustomer.request.UpdateCustomerRequest;
+import tdp.backend.mt.fija.main.restclient.updateCustomer.response.UpdateCustomerResponse;
 import tdp.backend.mt.fija.main.service.SchedulingService;
 
 @Service
@@ -278,9 +285,123 @@ public class SchedulingServiceImpl implements SchedulingService{
 		
 		return requestBody;
 	}
-	
-	
-	
-	
 
+	@Override
+	public Response<UpdateCustomerResponse> getUpdateCustomer(UpdateCustomerRequestFront request, Xhttp xhttp) {
+		
+		
+		Response<UpdateCustomerResponse> response = new Response<>();
+		
+		int retryCount = 3;
+		response = callApiUpdateCustomer(request,retryCount, xhttp);
+
+		return response;
+
+	}
+	
+	private Response<UpdateCustomerResponse> callApiUpdateCustomer(UpdateCustomerRequestFront request, int retryCount, Xhttp xhttp) {
+		Response<UpdateCustomerResponse> response = new Response<>();
+		
+		UpdateCustomerClient client = new UpdateCustomerClient(new ClientConfig());
+		
+		UpdateCustomerRequest requestBody = new UpdateCustomerRequest();
+		
+		//setear
+		//lógica para armar el request
+		
+		//se obtiene algo como esto
+		requestBody = getRequestBodyUpdate();
+		
+		Timestamp dateTimeRequest = UtilMethods.getFechaActual();
+		
+		ClientResult<ApiResponse> result = client.post(requestBody, request.getTipoCliente());
+		
+		Timestamp dateTimeResponse = UtilMethods.getFechaActual();
+		
+		if(request.getTipoCliente().equals("MT")) {
+			
+			result.getSceMt().setSourceAppVersion(xhttp.getAppVersion());
+			result.getSceMt().setSourceApp(xhttp.getAppSource());;
+			result.getSceMt().setDocNumber(xhttp.getCustomer());;
+			result.getSceMt().setOrderId(xhttp.getOrdenMT() != null ? !xhttp.getOrdenMT().equals("") ? ("MT" + xhttp.getOrdenMT()) : "" : "");
+			result.getSceMt().setUsername(xhttp.getUsuario());
+			result.getSceMt().setTag("SERVICE_CALL");
+			result.getSceMt().setDateTimeRequest(dateTimeRequest);
+			result.getSceMt().setDateTimeResponse(dateTimeResponse);
+			
+			serviceCallEventsMtService.saveOrUpdate(result.getSceMt());
+		} else if (request.getTipoCliente().equals("FIJA")) {
+			result.getSceFija().setSourceAppVersion(xhttp.getAppVersion());
+			result.getSceFija().setSourceApp(xhttp.getAppSource());;
+			result.getSceFija().setDocNumber(xhttp.getCustomer());;
+			result.getSceFija().setOrderId(xhttp.getOrdenMT() != null ? !xhttp.getOrdenMT().equals("") ? ("MT" + xhttp.getOrdenMT()) : "" : "");
+			result.getSceFija().setUsername(xhttp.getUsuario());
+			result.getSceFija().setTag("SERVICE_CALL");
+			result.getSceFija().setEventDateTime(dateTimeRequest);
+			serviceCallEventsFijaService.saveOrUpdate(result.getSceFija());
+		}
+		
+		
+		if (result == null || !result.isSuccess() || result.getResult() == null) {
+			if(retryCount > 0) {
+				log.info("No se obtuvo respuesta correcta del servicio, se procede a reintentar");
+				retryCount --;
+				return callApiUpdateCustomer(request, retryCount, xhttp);
+			} else {
+				log.error("Error en la petición del servicio, reintentos culminados");
+				response.setResponseCode(ServiceConstants.SERVICE_ERROR);
+                response.setResponseMessage("Error del servidor en el consumo del api: /provision/update-customer");
+                response.setResponseData(null);
+                return response;
+				
+			}
+		} else {
+			//aqui cuando se tiene la respuesta del api
+			
+			ApiResponse apiResponse = result.getResult();
+			
+			UpdateCustomerResponse responseData = apiResponse.getResponseUpdateCustomer();
+			
+			response.setResponseCode(ServiceConstants.SERVICE_SUCCESS);
+			response.setResponseMessage("OK");
+			response.setResponseData(responseData);
+			
+		}
+		
+		return response;
+		
+	}
+	
+	private UpdateCustomerRequest getRequestBodyUpdate() {
+		
+		UpdateCustomerRequest requestBody = new UpdateCustomerRequest();
+		
+		tdp.backend.mt.fija.main.restclient.updateCustomer.request.Header headerBody =  new tdp.backend.mt.fija.main.restclient.updateCustomer.request.Header();
+		
+		headerBody.setAppName("VENTASFIJA");
+		headerBody.setUser("user_ventasFija");
+		headerBody.setOperation("updateContact");
+		headerBody.setMessageId("57559b0c-5755-5755-5755-57559b0ceb0e");
+		headerBody.setTimestamp("2019-02-11T17:13:11.533");
+		
+		tdp.backend.mt.fija.main.restclient.updateCustomer.request.Body body = new tdp.backend.mt.fija.main.restclient.updateCustomer.request.Body();
+
+		body.setPsiCode("VF902");
+		body.setEmail("prueba@gmail.com");
+		
+		Contacts contact = new Contacts();
+		contact.setFullName("wilson lazo");
+		contact.setPhoneNumber("984101010");
+
+		
+		List<Contacts> contacts = new ArrayList<Contacts>();
+		contacts.add(contact);
+		
+		body.setContacts(contacts);
+		
+		requestBody.setHeader(headerBody);
+		requestBody.setBody(body);
+		
+		return requestBody;
+	}
 }

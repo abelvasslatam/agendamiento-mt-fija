@@ -9,13 +9,14 @@ import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.response.Sche
 public class ScheduleTechnicalAppointmentClient 
 
 	extends AbstractClient<ScheduleTechnicalAppointmentRequest, ScheduleTechnicalAppointmentResponse>{
+	
+	private static final String urlendpoint = "schedule/beforesales/";
+	private static final String urlmethod = "schedule-technical-appointments";
 
 	public ScheduleTechnicalAppointmentClient(ClientConfig config) {
 		super(config);
 		this.config = UtilMethods.buildConfigScheduleTechnicalHeader(urlendpoint, urlmethod);
 	}
-	private static final String urlendpoint = "schedule/beforesales/";
-	private static final String urlmethod = "schedule-technical-appointments";
 	
 	@Override
 	protected String getServiceCode() {

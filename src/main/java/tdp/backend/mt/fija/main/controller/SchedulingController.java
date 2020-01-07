@@ -26,6 +26,8 @@ import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.Availabil
 import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.response.AvailabilityTechnicalAppointmentsResponse;
 import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.ScheduleTechnicalAppointmentRequestFront;
 import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.response.ScheduleTechnicalAppointmentResponse;
+import tdp.backend.mt.fija.main.restclient.updateCustomer.UpdateCustomerRequestFront;
+import tdp.backend.mt.fija.main.restclient.updateCustomer.response.UpdateCustomerResponse;
 import tdp.backend.mt.fija.main.service.SchedulingService;
 
 @RestController
@@ -112,6 +114,42 @@ public class SchedulingController {
 		return response;
 		
 	}
+	
+	@PostMapping(value = "/update-customer", produces = "application/json; charset=UTF-8")
+	public Response<UpdateCustomerResponse> 
+	getUpdateCustomer
+	(@RequestBody UpdateCustomerRequestFront request,
+		HttpServletRequest httpResquest,
+		@RequestHeader(name = "X_HTTP_APPSOURCE") String X_HTTP_APPSOURCE,
+	    @RequestHeader(name = "X_HTTP_APPVERSION") String X_HTTP_APPVERSION,
+	    @RequestHeader(name = "X_HTTP_CUSTOMER") String X_HTTP_CUSTOMER,
+	    @RequestHeader(name = "X_HTTP_ORDERMT") String X_HTTP_ORDERMT,
+	    @RequestHeader(name = "X_HTTP_USUARIO") String X_HTTP_USUARIO) {
+		
+		Response<UpdateCustomerResponse> response = new Response<>();
+		
+		
+		Xhttp xhttp = new Xhttp();
+        xhttp.setAppSource(X_HTTP_APPSOURCE);
+        xhttp.setAppVersion(X_HTTP_APPVERSION);
+        xhttp.setCustomer(X_HTTP_CUSTOMER);
+        xhttp.setOrdenMT(X_HTTP_ORDERMT);
+        xhttp.setUsuario(X_HTTP_USUARIO);
+		
+        
+        try {
+			response = schedulingService.getUpdateCustomer(request, xhttp);
+		} catch (Exception e) {
+			log.error("Error method getUpdateCustomer -> SchedulingController", e);
+			response.setResponseMessage("Error getUpdateCustomer -> SchedulingController, problemas en el servidor MT-fija agendamiento");
+            response.setResponseCode(ServiceConstants.SERVICE_ERROR);
+		}
+		
+        LogVass.finishController(logger, "getUpdateCustomer", response);
+		return response;
+		
+	}
+	
 	
 	
 	@GetMapping(value = "/sc", produces = "application/json; charset=UTF-8")

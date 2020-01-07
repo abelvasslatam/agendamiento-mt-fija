@@ -40,7 +40,23 @@ public class UtilMethods {
         config.setApiSecret(apiSecret);
         config.setAuthorization(apiAuthorization);
         config.setOperation(operation);
+    	return config;
+    }
+    
+    public static ClientConfig buildConfigScheduleUpdateCustomer(String serviceEndpoint, String serviceName) {
+    	ClientConfig config = new ClientConfig();
     	
+    	String serviceUrl = ServiceUrlUtil.BASE_SERVICE_URL_UPDATE_CLIENT + serviceEndpoint+serviceName;
+        String apikey = ServiceUrlUtil.BASE_SERVICE_API_KEY_UPDATE_CLIENT;
+        String apiSecret = ServiceUrlUtil.BASE_SERVICE_API_SECRET_UPDATE_CLIENT;
+        String apiAuthorization = ServiceUrlUtil.BASE_SERVICE_API_AUTHORIZATION_UPDATE_CLIENT;
+        String operation = Constants.OPERATION; //REVISAR
+
+        config.setUrl(serviceUrl);
+        config.setApiId(apikey);
+        config.setApiSecret(apiSecret);
+        config.setAuthorization(apiAuthorization);
+        config.setOperation(operation);
     	
     	return config;
     }
