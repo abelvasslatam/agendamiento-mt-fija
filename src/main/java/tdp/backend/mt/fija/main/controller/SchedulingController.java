@@ -22,7 +22,7 @@ import tdp.backend.mt.fija.main.fija.model.ServiceCallEventsFija;
 import tdp.backend.mt.fija.main.fija.service.IServiceCallEventsFijaService;
 import tdp.backend.mt.fija.main.mt.model.ServiceCallEventsMt;
 import tdp.backend.mt.fija.main.mt.service.IServiceCallEventsMtService;
-import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.AvailabiltyTechAppointmentRequestFront;
+import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.front.AvailabiltyTechAppointmentRequestFront;
 import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.response.AvailabilityTechnicalAppointmentsResponse;
 import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.ScheduleTechnicalAppointmentRequestFront;
 import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.response.ScheduleTechnicalAppointmentResponse;

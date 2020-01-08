@@ -2,7 +2,9 @@ package tdp.backend.mt.fija.main.service.impl;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -16,12 +18,15 @@ import tdp.backend.mt.fija.common.util.ServiceConstants;
 import tdp.backend.mt.fija.common.util.UtilMethods;
 import tdp.backend.mt.fija.common.util.Xhttp;
 import tdp.backend.mt.fija.main.fija.service.IServiceCallEventsFijaService;
+import tdp.backend.mt.fija.main.mt.model.HfcPsListMt;
+import tdp.backend.mt.fija.main.mt.service.IHfcPsListMtService;
 import tdp.backend.mt.fija.main.mt.service.IServiceCallEventsMtService;
 import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.AvailabilityTechnicalAppointmentsClient;
-import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.AvailabiltyTechAppointmentRequestFront;
+import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.AvailabilityTechnicalAppointmentsRequest;
 import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.Body;
 import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.Header;
-import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.AvailabilityTechnicalAppointmentsRequest;
+import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.front.AvailabiltyTechAppointmentRequestFront;
+import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.front.Sva;
 import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.response.AvailabilityTechnicalAppointmentsResponse;
 import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.ScheduleTechnicalAppointmentClient;
 import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.ScheduleTechnicalAppointmentRequestFront;
@@ -43,6 +48,9 @@ public class SchedulingServiceImpl implements SchedulingService{
 	
 	@Autowired
 	IServiceCallEventsFijaService serviceCallEventsFijaService;
+	
+	@Autowired
+	IHfcPsListMtService hfcPsMTService;
 
 	@Override
 	public Response<AvailabilityTechnicalAppointmentsResponse> getAvailabilityTechnicalAppointments(
@@ -56,6 +64,8 @@ public class SchedulingServiceImpl implements SchedulingService{
 		return response;
 	}
 	
+	
+	
 	private Response<AvailabilityTechnicalAppointmentsResponse> callApiAvailabilityTechnicalAppointment(AvailabiltyTechAppointmentRequestFront request, int retryCount, Xhttp xhttp) {
 		Response<AvailabilityTechnicalAppointmentsResponse> response = new Response<>();
 		
@@ -63,11 +73,17 @@ public class SchedulingServiceImpl implements SchedulingService{
 		AvailabilityTechnicalAppointmentsClient client = new AvailabilityTechnicalAppointmentsClient(new ClientConfig());
 		
 		AvailabilityTechnicalAppointmentsRequest requestBody = new AvailabilityTechnicalAppointmentsRequest();
-		//setear
-		//lógica para armar el request
+
+		Map<String, Object> object = buildRequestAvailabilityMT(request);
 		
-		//se obtiene algo como esto
-		requestBody = getRequestBodyAva();
+		Boolean requiereVisitaTecnica = (Boolean) object.get("requiereVisitaTecnica");
+		
+		if(requiereVisitaTecnica) {
+			requestBody = (AvailabilityTechnicalAppointmentsRequest) object.get("availabilityTechnicalAppointmentsRequest");
+		}
+		
+		
+		requestBody = getRequestBodyAva(); //mock
 		
 		Timestamp dateTimeRequest = UtilMethods.getFechaActual();
 		
@@ -128,7 +144,168 @@ public class SchedulingServiceImpl implements SchedulingService{
 		return response;
 	}
 	
-	private AvailabilityTechnicalAppointmentsRequest getRequestBodyAva() {
+private Map<String, Object> buildRequestAvailabilityMT(AvailabiltyTechAppointmentRequestFront request) {
+		
+		Map<String, Object> requestObject = new HashMap<String, Object>();
+		
+		AvailabilityTechnicalAppointmentsRequest availabilityTechnicalAppointmentsRequest = new AvailabilityTechnicalAppointmentsRequest();
+		
+		Body bodyAvailability = new Body();
+		
+		//default
+		bodyAvailability.setCategory("");
+		bodyAvailability.setTheirProductCode("");
+		bodyAvailability.setInternetEquipment("");
+		bodyAvailability.setTvEquipment("");
+		bodyAvailability.setLineEquipment("");
+	
+		
+		boolean requiereVisitaTecnica = false;
+		
+		
+		String techInternetActual = "";
+		
+		if(request.getFijaInicial().getParkType().equals("ATIS")) { //PROBAR CON SOLO MONOS
+			techInternetActual = tecnologiaInternet(request.getFijaInicial().getPsPrincipal());
+		} else {
+			techInternetActual = "ADSL";
+		}
+		
+		
+		boolean isCambioTecnologia = isCambioTecnologia(techInternetActual, request.getTechInternetFinal());
+		
+		List<Sva> svas = request.getSvas();
+		boolean isSvaConVisita = isSvaConVisita(svas);
+		
+		
+		if(request.getTipoCliente().equals("FIJA")) {
+			bodyAvailability.setCodeOrigin("VF");
+		} else if (request.getTipoCliente().equals("MT")) {
+			bodyAvailability.setCodeOrigin("MT");
+		}
+		
+		bodyAvailability.setCoordXclient(request.getFijaInicial().getCoordinateX());
+		bodyAvailability.setCoordYclient(request.getFijaInicial().getCoordinateY());
+		
+		bodyAvailability.setInternetTech(request.getTechInternetFinal());
+		bodyAvailability.setCodProductPSI("P001"); //en MT este código es para todos
+		
+		
+		if(request.getOperacionComercial().equals("ALTA")) {
+			bodyAvailability.setCommercialOp("ALTA PURA");
+			requiereVisitaTecnica = true;
+		} else if (request.getOperacionComercial().equals("MIGRA")) {
+			
+			if(!request.getFijaInicial().getTipoProducto().equals("Trío")) {	
+				bodyAvailability.setCommercialOp("MIGRACION");
+				requiereVisitaTecnica = true;
+				
+				//revisar bien 
+//				if(request.getFijaInicial().getParkType().equals("CMS")) { // techInternetActual = "", no es trio es solo TV
+//					requiereVisitaTecnica = true;
+//				} else { 
+//					if (techInternetActual.equals("ADSL") || techInternetActual.equals("HFC")) {
+//						requiereVisitaTecnica = true;
+//					}
+//				}
+				 
+			} else {//si tiene trio evaluar si agrega svas o cambio de tecnologia
+				//si solo cambia de tecnologia bodyAvailability.setCommercialOp("MIGRACION");
+				//si solo agrega svas bodyAvailability.setCommercialOp("SVAS");
+				//si cambia de tecnologia y agrega svas bodyAvailability.setCommercialOp("MIGRACION");
+				
+				if(isSvaConVisita) {
+					bodyAvailability.setCommercialOp("SVAS");
+					requiereVisitaTecnica = true;
+				}
+				
+				if(isCambioTecnologia) {
+					bodyAvailability.setCommercialOp("MIGRACION");
+					requiereVisitaTecnica = true;
+				}
+					
+			}
+		} else if (request.getOperacionComercial().equals("GP-MANTIENE")) {
+			
+			if(isSvaConVisita) {
+				bodyAvailability.setCommercialOp("SVAS");
+				requiereVisitaTecnica = true;
+			}
+			
+		} else if (request.getOperacionComercial().equals("GP-MIGRA")) {
+			
+			if(isSvaConVisita) {
+				bodyAvailability.setCommercialOp("SVAS");
+				requiereVisitaTecnica = true;
+			}
+			
+			if(isCambioTecnologia) {
+				bodyAvailability.setCommercialOp("MIGRACION");
+				requiereVisitaTecnica = true;
+			}
+		}
+		
+		availabilityTechnicalAppointmentsRequest.setBody(bodyAvailability);
+		
+		requestObject.put("requiereVisitaTecnica", requiereVisitaTecnica);
+		requestObject.put("availabilityTechnicalAppointmentsRequest", availabilityTechnicalAppointmentsRequest);
+		
+		return requestObject;
+		
+	}
+	
+	private boolean isSvaConVisita(List<Sva> svas) {
+		boolean svaConVisitaTecnica = false;
+		
+		if(svas != null) {
+			for(Sva s : svas) {
+				if(s.getCodigoSva().equals("23026") || s.getCodigoSva().equals("23269")) {
+					svaConVisitaTecnica = true;
+				}
+			}
+		}
+		return svaConVisitaTecnica;
+	}
+	
+	private boolean isCambioTecnologia(String tecnologiaActual, String tecnologiaNueva) {
+		boolean isCambioTecnologia = false;
+		
+		if(tecnologiaNueva.equals("FTTH")) {
+			if(tecnologiaActual.equals("ADSL") || tecnologiaActual.equals("HFC")) {
+				isCambioTecnologia = true;
+			}
+		} else if (tecnologiaNueva.equals("HFC")) {
+			if(tecnologiaActual.equals("ADSL")) {
+				isCambioTecnologia = true;
+			}
+		}
+
+		return isCambioTecnologia;
+	}
+	
+	private String tecnologiaInternet(String ps) {
+		String techInternetActual = "";
+		
+		
+		HfcPsListMt hfcPs = null;
+		try {
+			hfcPs = hfcPsMTService.findByPs(ps);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		if (hfcPs != null) {
+			techInternetActual = hfcPs.getDesTechnology();
+		} else {
+			techInternetActual = "ADSL";
+		}
+		
+		return techInternetActual;
+	}
+	
+	
+	
+	private AvailabilityTechnicalAppointmentsRequest getRequestBodyAva() {//para borrar
 		AvailabilityTechnicalAppointmentsRequest requestBody = new AvailabilityTechnicalAppointmentsRequest();
 		Header headerBody =  new Header();
 		
