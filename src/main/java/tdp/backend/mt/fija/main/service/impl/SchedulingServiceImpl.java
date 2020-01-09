@@ -1,6 +1,7 @@
 package tdp.backend.mt.fija.main.service.impl;
 
 import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -82,8 +83,11 @@ public class SchedulingServiceImpl implements SchedulingService{
 			requestBody = (AvailabilityTechnicalAppointmentsRequest) object.get("availabilityTechnicalAppointmentsRequest");
 		}
 		
+		//POR FINES DE PRUEBAS TRAZA!!!!!!
+		requestBody.getBody().setCodeOrigin("VF");
+		requestBody.getBody().setCodProductPSI("P004"); //003 ó 004
 		
-		requestBody = getRequestBodyAva(); //mock
+		//requestBody = getRequestBodyAva(); //mock
 		
 		Timestamp dateTimeRequest = UtilMethods.getFechaActual();
 		
@@ -151,13 +155,26 @@ private Map<String, Object> buildRequestAvailabilityMT(AvailabiltyTechAppointmen
 		AvailabilityTechnicalAppointmentsRequest availabilityTechnicalAppointmentsRequest = new AvailabilityTechnicalAppointmentsRequest();
 		
 		Body bodyAvailability = new Body();
+		Header headerAvailability = new Header();
+		Timestamp dateTimeRequest = UtilMethods.getFechaActual();
 		
 		//default
+		
+		String timeStamp = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'").format(new Timestamp(System.currentTimeMillis()));
+		log.info(timeStamp);
+		
+		headerAvailability.setTimestamp("");
+		headerAvailability.setMessageId("");
+		headerAvailability.setOperation("availabilityAppointment");
+		headerAvailability.setAppName("MOVISTARTOTAL");
+		headerAvailability.setUser("user_movistarTotal");
+		
 		bodyAvailability.setCategory("");
 		bodyAvailability.setTheirProductCode("");
 		bodyAvailability.setInternetEquipment("");
 		bodyAvailability.setTvEquipment("");
 		bodyAvailability.setLineEquipment("");
+		bodyAvailability.setCodeOrigin("MT"); //estamos en el build de MT
 	
 		
 		boolean requiereVisitaTecnica = false;
@@ -177,12 +194,6 @@ private Map<String, Object> buildRequestAvailabilityMT(AvailabiltyTechAppointmen
 		List<Sva> svas = request.getSvas();
 		boolean isSvaConVisita = isSvaConVisita(svas);
 		
-		
-		if(request.getTipoCliente().equals("FIJA")) {
-			bodyAvailability.setCodeOrigin("VF");
-		} else if (request.getTipoCliente().equals("MT")) {
-			bodyAvailability.setCodeOrigin("MT");
-		}
 		
 		bodyAvailability.setCoordXclient(request.getFijaInicial().getCoordinateX());
 		bodyAvailability.setCoordYclient(request.getFijaInicial().getCoordinateY());
@@ -245,6 +256,7 @@ private Map<String, Object> buildRequestAvailabilityMT(AvailabiltyTechAppointmen
 			}
 		}
 		
+		availabilityTechnicalAppointmentsRequest.setHeader(headerAvailability);
 		availabilityTechnicalAppointmentsRequest.setBody(bodyAvailability);
 		
 		requestObject.put("requiereVisitaTecnica", requiereVisitaTecnica);
@@ -309,9 +321,9 @@ private Map<String, Object> buildRequestAvailabilityMT(AvailabiltyTechAppointmen
 		AvailabilityTechnicalAppointmentsRequest requestBody = new AvailabilityTechnicalAppointmentsRequest();
 		Header headerBody =  new Header();
 		
-		headerBody.setAppName("APP_WEB_FRONT_TRAZABILIDAD");
-		headerBody.setUser("USER_TRAZABILIDAD");
-		headerBody.setOperation("OPER_GET_SCHEDULE_AVAILABILITY");
+		headerBody.setAppName("MOVISTARTOTAL");
+		headerBody.setUser("user_movistarTotal");
+		headerBody.setOperation("availabilityAppointment");
 		headerBody.setMessageId("");
 		headerBody.setTimestamp("");
 		
@@ -319,7 +331,7 @@ private Map<String, Object> buildRequestAvailabilityMT(AvailabiltyTechAppointmen
 		body.setCodeOrigin("VF");
 		body.setCoordXclient("-77.0902642");
 		body.setCoordYclient("-12.0386869");
-		body.setCommercialOp("Alta Componente BA");
+		body.setCommercialOp("MIGRACION");
 		body.setCategory("");
 		body.setInternetTech("HFC");
 		body.setTheirProductCode("");

@@ -1,6 +1,8 @@
 package tdp.backend.mt.fija.main.controller;
 
 
+import java.sql.Timestamp;
+
 import javax.servlet.http.HttpServletRequest;
 
 import org.apache.logging.log4j.LogManager;
@@ -17,10 +19,13 @@ import lombok.extern.slf4j.Slf4j;
 import tdp.backend.mt.fija.common.domain.Response;
 import tdp.backend.mt.fija.common.util.LogVass;
 import tdp.backend.mt.fija.common.util.ServiceConstants;
+import tdp.backend.mt.fija.common.util.UtilMethods;
 import tdp.backend.mt.fija.common.util.Xhttp;
 import tdp.backend.mt.fija.main.fija.model.ServiceCallEventsFija;
 import tdp.backend.mt.fija.main.fija.service.IServiceCallEventsFijaService;
+import tdp.backend.mt.fija.main.mt.model.EndpointCallEvent;
 import tdp.backend.mt.fija.main.mt.model.ServiceCallEventsMt;
+import tdp.backend.mt.fija.main.mt.service.IEndpointCallEvents;
 import tdp.backend.mt.fija.main.mt.service.IServiceCallEventsMtService;
 import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.front.AvailabiltyTechAppointmentRequestFront;
 import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.response.AvailabilityTechnicalAppointmentsResponse;
@@ -43,6 +48,9 @@ public class SchedulingController {
 	
 	@Autowired
 	SchedulingService schedulingService;
+	
+	@Autowired
+	IEndpointCallEvents endpointCallEventsService;
 	
 	private static final Logger logger = LogManager.getLogger();
 	
@@ -67,6 +75,8 @@ public class SchedulingController {
         xhttp.setOrdenMT(X_HTTP_ORDERMT);
         xhttp.setUsuario(X_HTTP_USUARIO);
         
+        Timestamp dateTimeRequest = UtilMethods.getFechaActual();
+        
         try {
 			response = schedulingService.getAvailabilityTechnicalAppointments(request, xhttp);
 		} catch (Exception e) {
@@ -74,7 +84,14 @@ public class SchedulingController {
 			response.setResponseMessage("Error getTechnicalAppointments -> SchedulingController, problemas en el servidor MT-fija agendamiento");
             response.setResponseCode(ServiceConstants.SERVICE_ERROR);
 		}
+        
+        EndpointCallEvent endpointCallEvent = new EndpointCallEvent();
+        Timestamp dateTimeResponse = UtilMethods.getFechaActual();
+        endpointCallEvent = UtilMethods.JavaToJson(request, response, httpResquest.getRequestURI(), dateTimeRequest, response.getResponseCode(), response.getResponseCode(), xhttp);
 		
+        endpointCallEvent.setDatetimeResponse(dateTimeResponse);
+        endpointCallEventsService.saveOrUpdate(endpointCallEvent);
+        
         LogVass.finishController(logger, "getAvailabilityTechnicalAppointments", response);
 		return response;
 		
