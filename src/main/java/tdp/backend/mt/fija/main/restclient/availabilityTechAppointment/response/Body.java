@@ -16,4 +16,6 @@ public class Body {
 	@JsonProperty("capacityFicticious")
 	private CapacityFicticious capacityFicticious;
 	
+	private String codProductPSI;
+	private String commercialOp;
 }

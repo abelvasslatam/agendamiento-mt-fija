@@ -13,5 +13,6 @@ public class AvailabilityTechnicalAppointmentsResponse {
 	
 	@JsonProperty("body")
 	private Body body;
+	
 
 }

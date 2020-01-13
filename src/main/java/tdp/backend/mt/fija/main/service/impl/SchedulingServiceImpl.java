@@ -30,8 +30,8 @@ import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.f
 import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.front.Sva;
 import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.response.AvailabilityTechnicalAppointmentsResponse;
 import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.ScheduleTechnicalAppointmentClient;
-import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.ScheduleTechnicalAppointmentRequestFront;
 import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.request.ScheduleTechnicalAppointmentRequest;
+import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.request.front.ScheduleTechnicalAppointmentRequestFront;
 import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.response.ScheduleTechnicalAppointmentResponse;
 import tdp.backend.mt.fija.main.restclient.updateCustomer.UpdateCustomerClient;
 import tdp.backend.mt.fija.main.restclient.updateCustomer.UpdateCustomerRequestFront;
@@ -75,15 +75,25 @@ public class SchedulingServiceImpl implements SchedulingService{
 		
 		AvailabilityTechnicalAppointmentsRequest requestBody = new AvailabilityTechnicalAppointmentsRequest();
 
-		Map<String, Object> object = buildRequestAvailabilityMT(request);
+		Map<String, Object> object = null;
+		if(request.getTipoCliente().equals("MT")) {
+			object = buildRequestAvailabilityMT(request);
+		} else if(request.getTipoCliente().equals("FIJA")) {
+			//buildRequestAvailabilityFija(request);
+		}
+		
 		
 		Boolean requiereVisitaTecnica = (Boolean) object.get("requiereVisitaTecnica");
 		
-		if(requiereVisitaTecnica) {
-			requestBody = (AvailabilityTechnicalAppointmentsRequest) object.get("availabilityTechnicalAppointmentsRequest");
-		}
+		if(!requiereVisitaTecnica) {
+			response.setResponseCode("404");
+			response.setResponseMessage("No se necesita de visita técnica.");
+			return response;
+		} 
 		
-		//POR FINES DE PRUEBAS TRAZA!!!!!!
+		requestBody = (AvailabilityTechnicalAppointmentsRequest) object.get("availabilityTechnicalAppointmentsRequest");
+		
+		//PARA FINES DE PRUEBA TRAZA!!!!!!
 		requestBody.getBody().setCodeOrigin("VF");
 		requestBody.getBody().setCodProductPSI("P004"); //003 ó 004
 		
@@ -139,10 +149,12 @@ public class SchedulingServiceImpl implements SchedulingService{
 			
 			AvailabilityTechnicalAppointmentsResponse responseData = apiResponse.getResponseAvailability();
 			
-			response.setResponseCode(ServiceConstants.SERVICE_SUCCESS);
+			response.setResponseCode("200");
 			response.setResponseMessage("OK");
 			response.setResponseData(responseData);
 			
+			response.getResponseData().getBody().setCodProductPSI(requestBody.getBody().getCodProductPSI());
+			response.getResponseData().getBody().setCommercialOp(requestBody.getBody().getCommercialOp());
 		}
 		
 		return response;
@@ -156,11 +168,10 @@ private Map<String, Object> buildRequestAvailabilityMT(AvailabiltyTechAppointmen
 		
 		Body bodyAvailability = new Body();
 		Header headerAvailability = new Header();
-		Timestamp dateTimeRequest = UtilMethods.getFechaActual();
 		
 		//default
 		
-		String timeStamp = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'").format(new Timestamp(System.currentTimeMillis()));
+		String timeStamp = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(new Timestamp(System.currentTimeMillis()));
 		log.info(timeStamp);
 		
 		headerAvailability.setTimestamp("");
@@ -368,11 +379,17 @@ private Map<String, Object> buildRequestAvailabilityMT(AvailabiltyTechAppointmen
 		ScheduleTechnicalAppointmentClient client = new ScheduleTechnicalAppointmentClient(new ClientConfig());
 		
 		ScheduleTechnicalAppointmentRequest requestBody = new ScheduleTechnicalAppointmentRequest();
-		//setear
-		//lógica para armar el request
 		
-		//se obtiene algo como esto
-		requestBody = getRequestBodySch();
+		
+		if(request.getTipoCliente().equals("MT")) {
+			requestBody = buildRequestScheduleMT(request);
+		} else if(request.getTipoCliente().equals("FIJA")) {
+			//buildRequestScheduleFija(request);
+		}
+
+		
+		
+		//requestBody = getRequestBodySch(); //mock
 		
 		Timestamp dateTimeRequest = UtilMethods.getFechaActual();
 		
@@ -437,6 +454,48 @@ private Map<String, Object> buildRequestAvailabilityMT(AvailabiltyTechAppointmen
 		
 	}
 	
+	private ScheduleTechnicalAppointmentRequest buildRequestScheduleMT(ScheduleTechnicalAppointmentRequestFront requestFront) {
+		ScheduleTechnicalAppointmentRequest scheduleTechnicalAppointmentRequest = new ScheduleTechnicalAppointmentRequest();
+		
+		tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.request.Header headerSchedule = new tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.request.Header();
+		tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.request.Body bodySchedule = new tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.request.Body();
+		
+		//default
+		
+		String timeStamp = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(new Timestamp(System.currentTimeMillis()));
+		log.info(timeStamp);
+		
+		headerSchedule.setAppName("MOVISTARTOTAL");
+		headerSchedule.setUser("user_movistarTotal");
+		headerSchedule.setOperation("scheduleAppointments");
+		headerSchedule.setMessageId("57559b0c-5755-5755-5755-57559b0ceb0e");
+		headerSchedule.setTimestamp(timeStamp);
+		
+		bodySchedule.setOriginCode("MT");
+		bodySchedule.setSaleCode(requestFront.getSaleCode());
+		bodySchedule.setBucket(requestFront.getBucket());
+		bodySchedule.setScheduleDate(requestFront.getScheduleDate());
+		bodySchedule.setScheduleRange(requestFront.getScheduleRange());
+		bodySchedule.setCoordinateX(requestFront.getCoordinateX());
+		bodySchedule.setCoordinateY(requestFront.getCoordinateY());
+		bodySchedule.setDocumentType(requestFront.getDocumentType());
+		bodySchedule.setDocumentNumber(requestFront.getDocumentNumber());
+		bodySchedule.setCustomerName(requestFront.getCustomerName());
+		bodySchedule.setCustomerPatSurname(requestFront.getCustomerPatSurname());
+		bodySchedule.setCustomerMatSurname(requestFront.getCustomerMatSurname());
+		bodySchedule.setCommercialOp(requestFront.getCommercialOp());
+		bodySchedule.setInternetTech(requestFront.getInternetTech());
+		bodySchedule.setTechnologyTV(requestFront.getTechnologyTV());
+		bodySchedule.setCodProductPSI(requestFront.getCodProductPSI());
+
+
+		scheduleTechnicalAppointmentRequest.setHeader(headerSchedule);
+		scheduleTechnicalAppointmentRequest.setBody(bodySchedule);
+		
+		return scheduleTechnicalAppointmentRequest;
+		
+	}
+	
 	
 	private ScheduleTechnicalAppointmentRequest getRequestBodySch() {
 		ScheduleTechnicalAppointmentRequest requestBody = new ScheduleTechnicalAppointmentRequest();
@@ -495,11 +554,12 @@ private Map<String, Object> buildRequestAvailabilityMT(AvailabiltyTechAppointmen
 		
 		UpdateCustomerRequest requestBody = new UpdateCustomerRequest();
 		
-		//setear
-		//lógica para armar el request
-		
-		//se obtiene algo como esto
-		requestBody = getRequestBodyUpdate();
+		if(request.getTipoCliente().equals("MT")) {
+			requestBody = buildRequestUpdateCustomerMT(request);
+		} else if(request.getTipoCliente().equals("FIJA")) {
+			//buildRequestUpdateCustomerFija(request);
+		}
+		//requestBody = getRequestBodyUpdate(); //mock
 		
 		Timestamp dateTimeRequest = UtilMethods.getFechaActual();
 		
@@ -558,6 +618,35 @@ private Map<String, Object> buildRequestAvailabilityMT(AvailabiltyTechAppointmen
 		}
 		
 		return response;
+		
+	}
+	
+	private UpdateCustomerRequest buildRequestUpdateCustomerMT(UpdateCustomerRequestFront requestFront) {
+		UpdateCustomerRequest updateCustomerRequest = new UpdateCustomerRequest();
+		
+		tdp.backend.mt.fija.main.restclient.updateCustomer.request.Header headerUpdate = new tdp.backend.mt.fija.main.restclient.updateCustomer.request.Header();
+		tdp.backend.mt.fija.main.restclient.updateCustomer.request.Body bodyUpdate = new tdp.backend.mt.fija.main.restclient.updateCustomer.request.Body();
+		
+		//default
+		
+		String timeStamp = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(new Timestamp(System.currentTimeMillis()));
+		log.info(timeStamp);
+		
+		headerUpdate.setAppName("MOVISTARTOTAL");
+		headerUpdate.setUser("user_movistarTotal");
+		headerUpdate.setOperation("updateContact");
+		headerUpdate.setMessageId("57559b0c-5755-5755-5755-57559b0ceb0e");
+		headerUpdate.setTimestamp(timeStamp);
+		
+		bodyUpdate.setPsiCode(requestFront.getPsiCode());
+		bodyUpdate.setEmail(requestFront.getEmail());
+		bodyUpdate.setContacts(requestFront.getContacts());
+		
+		updateCustomerRequest.setHeader(headerUpdate);
+		updateCustomerRequest.setBody(bodyUpdate);
+
+		
+		return updateCustomerRequest;
 		
 	}
 	
