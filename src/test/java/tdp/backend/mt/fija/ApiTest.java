@@ -31,12 +31,7 @@ public class ApiTest {
 		body.setCoordXclient("-77.0902642");
 		body.setCoordYclient("-12.0386869");
 		body.setCommercialOp("Alta Componente BA");
-		body.setCategory("");
 		body.setInternetTech("HFC");
-		body.setTheirProductCode("");
-		body.setLineEquipment("");
-		body.setInternetEquipment("");
-		body.setTvEquipment("");
 		body.setCodProductPSI("P004");
 		
 		

@@ -3,10 +3,14 @@ package tdp.backend.mt.fija.main.service.impl;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -18,7 +22,11 @@ import tdp.backend.mt.fija.common.domain.Response;
 import tdp.backend.mt.fija.common.util.ServiceConstants;
 import tdp.backend.mt.fija.common.util.UtilMethods;
 import tdp.backend.mt.fija.common.util.Xhttp;
+import tdp.backend.mt.fija.main.fija.model.TdpOrder;
+import tdp.backend.mt.fija.main.fija.model.TdpSva;
 import tdp.backend.mt.fija.main.fija.service.IServiceCallEventsFijaService;
+import tdp.backend.mt.fija.main.fija.service.ITdpOrderFijaService;
+import tdp.backend.mt.fija.main.fija.service.ITdpSvaFijaService;
 import tdp.backend.mt.fija.main.mt.model.HfcPsListMt;
 import tdp.backend.mt.fija.main.mt.service.IHfcPsListMtService;
 import tdp.backend.mt.fija.main.mt.service.IServiceCallEventsMtService;
@@ -29,6 +37,7 @@ import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.H
 import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.front.AvailabiltyTechAppointmentRequestFront;
 import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.request.front.Sva;
 import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.response.AvailabilityTechnicalAppointmentsResponse;
+import tdp.backend.mt.fija.main.restclient.availabilityTechAppointment.response.Dates;
 import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.ScheduleTechnicalAppointmentClient;
 import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.request.ScheduleTechnicalAppointmentRequest;
 import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.request.front.ScheduleTechnicalAppointmentRequestFront;
@@ -52,6 +61,12 @@ public class SchedulingServiceImpl implements SchedulingService{
 	
 	@Autowired
 	IHfcPsListMtService hfcPsMTService;
+	
+	@Autowired
+	ITdpOrderFijaService tdpOrderService;
+	
+	@Autowired
+	ITdpSvaFijaService tdpSvaService;
 
 	@Override
 	public Response<AvailabilityTechnicalAppointmentsResponse> getAvailabilityTechnicalAppointments(
@@ -79,14 +94,14 @@ public class SchedulingServiceImpl implements SchedulingService{
 		if(request.getTipoCliente().equals("MT")) {
 			object = buildRequestAvailabilityMT(request);
 		} else if(request.getTipoCliente().equals("FIJA")) {
-			//buildRequestAvailabilityFija(request);
+			object = buildRequestAvailabilityFija(request);
 		}
 		
 		
 		Boolean requiereVisitaTecnica = (Boolean) object.get("requiereVisitaTecnica");
 		
 		if(!requiereVisitaTecnica) {
-			response.setResponseCode("404");
+			response.setResponseCode("2");
 			response.setResponseMessage("No se necesita de visita técnica.");
 			return response;
 		} 
@@ -94,8 +109,8 @@ public class SchedulingServiceImpl implements SchedulingService{
 		requestBody = (AvailabilityTechnicalAppointmentsRequest) object.get("availabilityTechnicalAppointmentsRequest");
 		
 		//PARA FINES DE PRUEBA TRAZA!!!!!!
-		requestBody.getBody().setCodeOrigin("VF");
-		requestBody.getBody().setCodProductPSI("P004"); //003 ó 004
+		//requestBody.getBody().setCodeOrigin("VF");
+		//requestBody.getBody().setCodProductPSI("P004"); //003 ó 004
 		
 		//requestBody = getRequestBodyAva(); //mock
 		
@@ -149,10 +164,18 @@ public class SchedulingServiceImpl implements SchedulingService{
 			
 			AvailabilityTechnicalAppointmentsResponse responseData = apiResponse.getResponseAvailability();
 			
-			response.setResponseCode("200");
+			//retirar slots con cantidad 0 tanto en AM y PM	
+			List<Dates> dates = responseData.getBody().getCapacityFicticious().getDate();
+			dates.stream()
+			.filter(s -> Integer.parseInt(s.getSlot().get(0).getQuantity()) > 0 && Integer.parseInt(s.getSlot().get(1).getQuantity()) > 0)
+			.collect(Collectors.toList());
+			
+			responseData.getBody().getCapacityFicticious().setDate(dates);
+						
+			
+			response.setResponseCode("0");
 			response.setResponseMessage("OK");
 			response.setResponseData(responseData);
-			
 			response.getResponseData().getBody().setCodProductPSI(requestBody.getBody().getCodProductPSI());
 			response.getResponseData().getBody().setCommercialOp(requestBody.getBody().getCommercialOp());
 		}
@@ -160,7 +183,160 @@ public class SchedulingServiceImpl implements SchedulingService{
 		return response;
 	}
 	
-private Map<String, Object> buildRequestAvailabilityMT(AvailabiltyTechAppointmentRequestFront request) {
+	private Map<String, Object> buildRequestAvailabilityFija(AvailabiltyTechAppointmentRequestFront request) {
+		Map<String, Object> requestObject = new HashMap<String, Object>();
+		
+		AvailabilityTechnicalAppointmentsRequest availabilityTechnicalAppointmentsRequest = new AvailabilityTechnicalAppointmentsRequest();
+		Body bodyAvailability = new Body();
+		Header headerAvailability = new Header();
+		
+		//default
+		String timeStamp = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(new Timestamp(System.currentTimeMillis()));
+		
+		headerAvailability.setTimestamp(timeStamp);
+		headerAvailability.setMessageId(UUID.randomUUID().toString());
+		headerAvailability.setOperation("availabilityAppointment");
+		headerAvailability.setAppName("VENTASFIJA");
+		headerAvailability.setUser("user_ventasFija");
+		
+		bodyAvailability.setCodeOrigin("VF"); //estamos en el build de FIJA	
+		
+		//coordenadas
+		if(request.getFijaRequest().getCoordinateX() != null) {
+			bodyAvailability.setCoordXclient(request.getFijaRequest().getCoordinateX());
+			bodyAvailability.setCoordYclient(request.getFijaRequest().getCoordinateY());
+		} else {
+			//hacer algo cuando el front no envia xy
+		}
+		
+		//validar si necesita visita tecnica antes de armar el request
+		boolean requiereVisitaTecnica = false;
+		
+		boolean isSvaConVisita = false;
+		boolean hasOrderEquipment = false;
+
+		//LOGICA PARA EL PSI Y OPERACION COMERCIAL
+		TdpOrder tdpOrder = null;
+		
+		try {
+			tdpOrder = tdpOrderService.findById(request.getFijaRequest().getOrderId());
+			if(tdpOrder == null) {
+				requestObject.put("requiereVisitaTecnica", requiereVisitaTecnica);
+				requestObject.put("mensaje","OrderID:  "+ request.getFijaRequest().getOrderId() + ", no encontrado en la base de datos.");
+				return requestObject;
+			}
+			bodyAvailability.setInternetTech(tdpOrder.getProductTecInter());
+			bodyAvailability.setTechnologyTV(tdpOrder.getProductTecTv());
+			
+			
+			List<String> svaCodes = new ArrayList<String>();
+			
+			//solo svas que tengan un codigo
+			if(tdpOrder.getSvaCodigo1() != null) svaCodes.add(tdpOrder.getSvaCodigo1());
+			if(tdpOrder.getSvaCodigo2() != null) svaCodes.add(tdpOrder.getSvaCodigo2());
+			if(tdpOrder.getSvaCodigo3() != null) svaCodes.add(tdpOrder.getSvaCodigo3());
+			if(tdpOrder.getSvaCodigo4() != null) svaCodes.add(tdpOrder.getSvaCodigo4());
+			if(tdpOrder.getSvaCodigo5() != null) svaCodes.add(tdpOrder.getSvaCodigo5());
+			if(tdpOrder.getSvaCodigo6() != null) svaCodes.add(tdpOrder.getSvaCodigo6());
+			if(tdpOrder.getSvaCodigo7() != null) svaCodes.add(tdpOrder.getSvaCodigo7());
+			if(tdpOrder.getSvaCodigo8() != null) svaCodes.add(tdpOrder.getSvaCodigo8());
+			if(tdpOrder.getSvaCodigo9() != null) svaCodes.add(tdpOrder.getSvaCodigo9());
+			if(tdpOrder.getSvaCodigo10() != null) svaCodes.add(tdpOrder.getSvaCodigo10());
+			
+			isSvaConVisita = isSvaFijaConVisita(svaCodes);
+			hasOrderEquipment = verificarEquipamiento(tdpOrder);
+			
+			if(isSvaConVisita || hasOrderEquipment) {
+				requiereVisitaTecnica = true;
+			}
+			
+			if(requiereVisitaTecnica) {
+				//OPERACIONES COMERCIALES
+				String opComercialesValidas = "ALTA PURA,ALTA COMPONENTE BA,COMPLETA NAKED,ALTA COMPONENTE SOBRE TV,ALTA COMPONENTE TV,ALTA COMPONENTE LINEA,MIGRACION,SVAS";
+				//convertirlo a una lista
+				List<String> listOpComercialesValidas = Arrays.asList(opComercialesValidas.split(","));
+				
+				if(listOpComercialesValidas.contains(tdpOrder.getOrderOperationCommercial())) {
+					bodyAvailability.setCommercialOp(tdpOrder.getOrderOperationCommercial());
+					
+					
+					requestObject.put("requiereVisitaTecnica", requiereVisitaTecnica);
+					requestObject.put("availabilityTechnicalAppointmentsRequest", availabilityTechnicalAppointmentsRequest);
+					//ARMAR EL PSI CODE
+				} else {
+					//NO SE SOPORTA LA OP COMERCIAL
+					requestObject.put("requiereVisitaTecnica", false);
+					requestObject.put("mensaje","La operación comercial: "+ tdpOrder.getOrderOperationCommercial() + ", no es soportado para el agendamiento.");
+					return requestObject;
+					
+				}
+				
+				
+//				if(!StringUtils.isBlank(tdpOrder.getOrderOperationCommercial())) {
+//					
+//				}
+			}
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		
+		return requestObject;
+	}
+	
+	private boolean verificarEquipamiento(TdpOrder tdpOrder) {
+		boolean hasOrderEquipment = false;
+		
+		boolean equipmentTv = false;
+		boolean equipmentInternet = false;
+		boolean equipmentLinea = false;
+		
+		StringUtils.isBlank("");
+		
+		if(!StringUtils.isBlank(tdpOrder.getProductEquipTv())) {
+			equipmentTv = true;
+		}
+		if(!StringUtils.isBlank(tdpOrder.getProductEquipInter())) {
+			equipmentInternet = true;
+		}
+		if(!StringUtils.isBlank(tdpOrder.getProductEquipLine())) {
+			equipmentLinea = true;
+		}
+		
+		if(equipmentTv || equipmentInternet || equipmentLinea) {
+			hasOrderEquipment = true;
+		}
+		
+		return hasOrderEquipment;
+	}
+	
+	private boolean isSvaFijaConVisita(List<String> svaCodes) {
+		boolean svaConVisitaTecnica = false;
+		TdpSva tdpSva = null;
+		String svaValidos = "REPETIDOR SMART WIFI,PUNTO ADICIONAL SMART HD"; //traer de la base de datos
+		
+		//convertirlo a una lista
+		List<String> listSvaValidos = Arrays.asList(svaValidos.split(","));
+		for(String svaCode : svaCodes) {
+			try {
+				tdpSva = tdpSvaService.findBySvaCode(svaCode);
+				if(listSvaValidos.contains(tdpSva.getDescription().toUpperCase())) {
+					svaConVisitaTecnica = true;
+					break;
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}			
+		}
+		return svaConVisitaTecnica;
+	}
+	
+	private void getOperacionComercial() {
+		String operacionComercial = "";
+	}
+	
+	private Map<String, Object> buildRequestAvailabilityMT(AvailabiltyTechAppointmentRequestFront request) {
 		
 		Map<String, Object> requestObject = new HashMap<String, Object>();
 		
@@ -172,19 +348,13 @@ private Map<String, Object> buildRequestAvailabilityMT(AvailabiltyTechAppointmen
 		//default
 		
 		String timeStamp = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(new Timestamp(System.currentTimeMillis()));
-		log.info(timeStamp);
 		
-		headerAvailability.setTimestamp("");
-		headerAvailability.setMessageId("");
+		headerAvailability.setTimestamp(timeStamp);
+		headerAvailability.setMessageId(UUID.randomUUID().toString());
 		headerAvailability.setOperation("availabilityAppointment");
 		headerAvailability.setAppName("MOVISTARTOTAL");
 		headerAvailability.setUser("user_movistarTotal");
 		
-		bodyAvailability.setCategory("");
-		bodyAvailability.setTheirProductCode("");
-		bodyAvailability.setInternetEquipment("");
-		bodyAvailability.setTvEquipment("");
-		bodyAvailability.setLineEquipment("");
 		bodyAvailability.setCodeOrigin("MT"); //estamos en el build de MT
 	
 		
@@ -193,32 +363,32 @@ private Map<String, Object> buildRequestAvailabilityMT(AvailabiltyTechAppointmen
 		
 		String techInternetActual = "";
 		
-		if(request.getFijaInicial().getParkType().equals("ATIS")) { //PROBAR CON SOLO MONOS
-			techInternetActual = tecnologiaInternet(request.getFijaInicial().getPsPrincipal());
+		if(request.getMtRequest().getFijaInicial().getParkType().equals("ATIS")) { //PROBAR CON SOLO MONOS
+			techInternetActual = getTecnologiaInternet(request.getMtRequest().getFijaInicial().getPsPrincipal());
 		} else {
 			techInternetActual = "ADSL";
 		}
 		
 		
-		boolean isCambioTecnologia = isCambioTecnologia(techInternetActual, request.getTechInternetFinal());
+		boolean isCambioTecnologia = isCambioTecnologia(techInternetActual, request.getMtRequest().getTechInternetFinal());
 		
-		List<Sva> svas = request.getSvas();
-		boolean isSvaConVisita = isSvaConVisita(svas);
+		List<Sva> svas = request.getMtRequest().getSvas();
+		boolean isSvaConVisita = isSvaMtConVisita(svas);
 		
 		
-		bodyAvailability.setCoordXclient(request.getFijaInicial().getCoordinateX());
-		bodyAvailability.setCoordYclient(request.getFijaInicial().getCoordinateY());
+		bodyAvailability.setCoordXclient(request.getMtRequest().getFijaInicial().getCoordinateX());
+		bodyAvailability.setCoordYclient(request.getMtRequest().getFijaInicial().getCoordinateY());
 		
-		bodyAvailability.setInternetTech(request.getTechInternetFinal());
+		bodyAvailability.setInternetTech(request.getMtRequest().getTechInternetFinal());
 		bodyAvailability.setCodProductPSI("P001"); //en MT este código es para todos
 		
 		
-		if(request.getOperacionComercial().equals("ALTA")) {
+		if(request.getMtRequest().getOperacionComercial().equals("ALTA")) {
 			bodyAvailability.setCommercialOp("ALTA PURA");
 			requiereVisitaTecnica = true;
-		} else if (request.getOperacionComercial().equals("MIGRA")) {
+		} else if (request.getMtRequest().getOperacionComercial().equals("MIGRA")) {
 			
-			if(!request.getFijaInicial().getTipoProducto().equals("Trío")) {	
+			if(!request.getMtRequest().getFijaInicial().getTipoProducto().equals("Trío")) {	
 				bodyAvailability.setCommercialOp("MIGRACION");
 				requiereVisitaTecnica = true;
 				
@@ -247,14 +417,14 @@ private Map<String, Object> buildRequestAvailabilityMT(AvailabiltyTechAppointmen
 				}
 					
 			}
-		} else if (request.getOperacionComercial().equals("GP-MANTIENE")) {
+		} else if (request.getMtRequest().getOperacionComercial().equals("GP-MANTIENE")) {
 			
 			if(isSvaConVisita) {
 				bodyAvailability.setCommercialOp("SVAS");
 				requiereVisitaTecnica = true;
 			}
 			
-		} else if (request.getOperacionComercial().equals("GP-MIGRA")) {
+		} else if (request.getMtRequest().getOperacionComercial().equals("GP-MIGRA")) {
 			
 			if(isSvaConVisita) {
 				bodyAvailability.setCommercialOp("SVAS");
@@ -277,7 +447,7 @@ private Map<String, Object> buildRequestAvailabilityMT(AvailabiltyTechAppointmen
 		
 	}
 	
-	private boolean isSvaConVisita(List<Sva> svas) {
+	private boolean isSvaMtConVisita(List<Sva> svas) {
 		boolean svaConVisitaTecnica = false;
 		
 		if(svas != null) {
@@ -306,7 +476,7 @@ private Map<String, Object> buildRequestAvailabilityMT(AvailabiltyTechAppointmen
 		return isCambioTecnologia;
 	}
 	
-	private String tecnologiaInternet(String ps) {
+	private String getTecnologiaInternet(String ps) {
 		String techInternetActual = "";
 		
 		
@@ -343,12 +513,7 @@ private Map<String, Object> buildRequestAvailabilityMT(AvailabiltyTechAppointmen
 		body.setCoordXclient("-77.0902642");
 		body.setCoordYclient("-12.0386869");
 		body.setCommercialOp("MIGRACION");
-		body.setCategory("");
 		body.setInternetTech("HFC");
-		body.setTheirProductCode("");
-		body.setLineEquipment("");
-		body.setInternetEquipment("");
-		body.setTvEquipment("");
 		body.setCodProductPSI("P004");
 		
 		
