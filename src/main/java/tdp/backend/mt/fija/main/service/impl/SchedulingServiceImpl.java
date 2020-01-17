@@ -187,8 +187,8 @@ public class SchedulingServiceImpl implements SchedulingService{
 		Map<String, Object> requestObject = new HashMap<String, Object>();
 		
 		AvailabilityTechnicalAppointmentsRequest availabilityTechnicalAppointmentsRequest = new AvailabilityTechnicalAppointmentsRequest();
-		Body bodyAvailability = new Body();
 		Header headerAvailability = new Header();
+		Body bodyAvailability = new Body();
 		
 		//default
 		String timeStamp = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(new Timestamp(System.currentTimeMillis()));
@@ -209,7 +209,6 @@ public class SchedulingServiceImpl implements SchedulingService{
 			//hacer algo cuando el front no envia xy
 		}
 		
-		//validar si necesita visita tecnica antes de armar el request
 		boolean requiereVisitaTecnica = false;
 		
 		boolean isSvaConVisita = false;
@@ -218,6 +217,8 @@ public class SchedulingServiceImpl implements SchedulingService{
 		//LOGICA PARA EL PSI Y OPERACION COMERCIAL
 		TdpOrder tdpOrder = null;
 		
+		String message = "";
+		
 		try {
 			tdpOrder = tdpOrderService.findById(request.getFijaRequest().getOrderId());
 			if(tdpOrder == null) {
@@ -225,6 +226,26 @@ public class SchedulingServiceImpl implements SchedulingService{
 				requestObject.put("mensaje","OrderID:  "+ request.getFijaRequest().getOrderId() + ", no encontrado en la base de datos.");
 				return requestObject;
 			}
+			
+			//VERIFICAR OPERACION COMERCIAL
+			//OPERACIONES COMERCIALES
+			
+			//traer de bd
+			String opComercialesValidas = "ALTA PURA,ALTA COMPONENTE BA,COMPLETA NAKED,ALTA COMPONENTE SOBRE TV,ALTA COMPONENTE TV,ALTA COMPONENTE LINEA,MIGRACION,SVAS";
+			List<String> listOpComercialesValidas = Arrays.asList(opComercialesValidas.split(","));
+			
+			if(listOpComercialesValidas.contains(tdpOrder.getOrderOperationCommercial().toUpperCase())) {
+				
+				bodyAvailability.setCommercialOp(tdpOrder.getOrderOperationCommercial().toUpperCase());
+				bodyAvailability.setCodProductPSI(getPsiCode(tdpOrder));
+				
+			} else {
+				//NO SOPORTA LA OP COMERCIAL
+				requestObject.put("mensaje","La operación comercial: "+ tdpOrder.getOrderOperationCommercial() + ", no es soportado para el agendamiento.");		
+				requestObject.put("requiereVisitaTecnica", requiereVisitaTecnica);
+				return requestObject;
+			}
+	
 			bodyAvailability.setInternetTech(tdpOrder.getProductTecInter());
 			bodyAvailability.setTechnologyTV(tdpOrder.getProductTecTv());
 			
@@ -248,41 +269,101 @@ public class SchedulingServiceImpl implements SchedulingService{
 			
 			if(isSvaConVisita || hasOrderEquipment) {
 				requiereVisitaTecnica = true;
+				availabilityTechnicalAppointmentsRequest.setHeader(headerAvailability);
+				availabilityTechnicalAppointmentsRequest.setBody(bodyAvailability);
+				
+				requestObject.put("availabilityTechnicalAppointmentsRequest", availabilityTechnicalAppointmentsRequest);
+				message = "OK";
+			} else {
+				message = "NO SE REQUIERE DE VISITA TECNICA";
 			}
 			
-			if(requiereVisitaTecnica) {
-				//OPERACIONES COMERCIALES
-				String opComercialesValidas = "ALTA PURA,ALTA COMPONENTE BA,COMPLETA NAKED,ALTA COMPONENTE SOBRE TV,ALTA COMPONENTE TV,ALTA COMPONENTE LINEA,MIGRACION,SVAS";
-				//convertirlo a una lista
-				List<String> listOpComercialesValidas = Arrays.asList(opComercialesValidas.split(","));
-				
-				if(listOpComercialesValidas.contains(tdpOrder.getOrderOperationCommercial())) {
-					bodyAvailability.setCommercialOp(tdpOrder.getOrderOperationCommercial());
-					
-					
-					requestObject.put("requiereVisitaTecnica", requiereVisitaTecnica);
-					requestObject.put("availabilityTechnicalAppointmentsRequest", availabilityTechnicalAppointmentsRequest);
-					//ARMAR EL PSI CODE
-				} else {
-					//NO SE SOPORTA LA OP COMERCIAL
-					requestObject.put("requiereVisitaTecnica", false);
-					requestObject.put("mensaje","La operación comercial: "+ tdpOrder.getOrderOperationCommercial() + ", no es soportado para el agendamiento.");
-					return requestObject;
-					
-				}
-				
-				
-//				if(!StringUtils.isBlank(tdpOrder.getOrderOperationCommercial())) {
-//					
-//				}
-			}
+			
 			
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		
+		requestObject.put("requiereVisitaTecnica", requiereVisitaTecnica);
+		requestObject.put("mensaje", message);
 		
 		return requestObject;
+	}
+	
+	private String getPsiCode(TdpOrder tdpOrder) {
+		String psiCodeString = null;
+		
+		String opComercial = tdpOrder.getOrderOperationCommercial().toUpperCase();
+		String tecInternet = tdpOrder.getProductTecInter().toUpperCase();
+		String tecTv = tdpOrder.getProductTecTv();
+		
+		switch (opComercial) {
+		case "ALTA PURA":
+			if(tecInternet.equals("ADSL")) {
+				psiCodeString = "P002";
+			} else if(tecInternet.equals("HFC")) {
+				psiCodeString = "P003";
+			} else if(tecInternet.equals("FTTH")) {
+				psiCodeString = "P004";
+			} else if(tecTv.equals("CATV")) {
+				psiCodeString = "P005";
+			} else if(tecTv.equals("DTH")) {
+				psiCodeString = "P006";
+			}
+			break;
+		case "ALTA COMPONENTE BA":
+		case "COMPLETA NAKED":
+			if(tecInternet.equals("ADSL")) {
+				psiCodeString = "P002";
+			} else if(tecInternet.equals("HFC")) {
+				psiCodeString = "P003";
+			} else if(tecInternet.equals("FTTH")) {
+				psiCodeString = "P004";
+			}
+			break;
+		case "ALTA COMPONENTE SOBRE TV":
+		case "ALTA COMPONENTE TV":
+			if(tecTv.equals("CATV")) {
+				psiCodeString = "P005";
+			} else if(tecTv.equals("DTH")) {
+				psiCodeString = "P006";
+			}
+			break;
+		case "ALTA COMPONENTE LINEA":
+			if(tecInternet.equals("HFC") || tecInternet.equals("FTTH")) {
+				psiCodeString = "P007";
+			}
+			break;
+		case "MIGRACION":
+			if(tecInternet.equals("HFC")) {
+				psiCodeString = "P003";
+			} else if(tecInternet.equals("FTTH")) {
+				psiCodeString = "P004";
+			} else if(tecTv.equals("CATV")) {
+				psiCodeString = "P005";
+			} else if(tecTv.equals("DTH")) {
+				psiCodeString = "P006";
+			}
+			break;
+		case "SVAS":
+			if(tecInternet.equals("ADSL")) {
+				psiCodeString = "P002";
+			} else if(tecInternet.equals("HFC")) {
+				psiCodeString = "P003";
+			} else if(tecInternet.equals("FTTH")) {
+				psiCodeString = "P004";
+			} else if(tecTv.equals("CATV")) {
+				psiCodeString = "P005";
+			} else if(tecTv.equals("DTH")) {
+				psiCodeString = "P006";
+			}
+			break;
+		default:
+			break;
+		}
+		
+		
+		return psiCodeString;
 	}
 	
 	private boolean verificarEquipamiento(TdpOrder tdpOrder) {
@@ -291,8 +372,6 @@ public class SchedulingServiceImpl implements SchedulingService{
 		boolean equipmentTv = false;
 		boolean equipmentInternet = false;
 		boolean equipmentLinea = false;
-		
-		StringUtils.isBlank("");
 		
 		if(!StringUtils.isBlank(tdpOrder.getProductEquipTv())) {
 			equipmentTv = true;
