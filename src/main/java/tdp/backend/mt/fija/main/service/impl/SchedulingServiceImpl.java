@@ -44,7 +44,6 @@ import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.request.front
 import tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.response.ScheduleTechnicalAppointmentResponse;
 import tdp.backend.mt.fija.main.restclient.updateCustomer.UpdateCustomerClient;
 import tdp.backend.mt.fija.main.restclient.updateCustomer.UpdateCustomerRequestFront;
-import tdp.backend.mt.fija.main.restclient.updateCustomer.request.Contacts;
 import tdp.backend.mt.fija.main.restclient.updateCustomer.request.UpdateCustomerRequest;
 import tdp.backend.mt.fija.main.restclient.updateCustomer.response.UpdateCustomerResponse;
 import tdp.backend.mt.fija.main.service.SchedulingService;
@@ -96,13 +95,15 @@ public class SchedulingServiceImpl implements SchedulingService{
 		} else if(request.getTipoCliente().equals("FIJA")) {
 			object = buildRequestAvailabilityFija(request);
 		}
-		
-		
+		String message  = (String) object.get("mensaje");
+		log.info("Respuesta build body: " + message);
 		Boolean requiereVisitaTecnica = (Boolean) object.get("requiereVisitaTecnica");
 		
+		
 		if(!requiereVisitaTecnica) {
-			response.setResponseCode("2");
-			response.setResponseMessage("No se necesita de visita técnica.");
+			
+			response.setResponseCode(ServiceConstants.SERVICE_WARNING);
+			response.setResponseMessage(message);
 			return response;
 		} 
 		
@@ -158,13 +159,10 @@ public class SchedulingServiceImpl implements SchedulingService{
 				
 			}
 		} else {
-			//aqui cuando se tiene la respuesta del api
-			
 			ApiResponse apiResponse = result.getResult();
 			
 			AvailabilityTechnicalAppointmentsResponse responseData = apiResponse.getResponseAvailability();
 			
-			//retirar slots con cantidad 0 tanto en AM y PM	
 			List<Dates> dates = responseData.getBody().getCapacityFicticious().getDate();
 			dates.stream()
 			.filter(s -> Integer.parseInt(s.getSlot().get(0).getQuantity()) > 0 && Integer.parseInt(s.getSlot().get(1).getQuantity()) > 0)
@@ -173,7 +171,7 @@ public class SchedulingServiceImpl implements SchedulingService{
 			responseData.getBody().getCapacityFicticious().setDate(dates);
 						
 			
-			response.setResponseCode("0");
+			response.setResponseCode(ServiceConstants.SERVICE_SUCCESS);
 			response.setResponseMessage("OK");
 			response.setResponseData(responseData);
 			response.getResponseData().getBody().setCodProductPSI(requestBody.getBody().getCodProductPSI());
@@ -223,7 +221,7 @@ public class SchedulingServiceImpl implements SchedulingService{
 			tdpOrder = tdpOrderService.findById(request.getFijaRequest().getOrderId());
 			if(tdpOrder == null) {
 				requestObject.put("requiereVisitaTecnica", requiereVisitaTecnica);
-				requestObject.put("mensaje","OrderID:  "+ request.getFijaRequest().getOrderId() + ", no encontrado en la base de datos.");
+				requestObject.put("mensaje","OrderID - Fija:  "+ request.getFijaRequest().getOrderId() + ", no encontrado en la base de datos.");
 				return requestObject;
 			}
 			
@@ -241,7 +239,7 @@ public class SchedulingServiceImpl implements SchedulingService{
 				
 			} else {
 				//NO SOPORTA LA OP COMERCIAL
-				requestObject.put("mensaje","La operación comercial: "+ tdpOrder.getOrderOperationCommercial() + ", no es soportado para el agendamiento.");		
+				requestObject.put("mensaje","La operación comercial: "+ tdpOrder.getOrderOperationCommercial() + " - Fija, no es soportado para el agendamiento.");		
 				requestObject.put("requiereVisitaTecnica", requiereVisitaTecnica);
 				return requestObject;
 			}
@@ -273,7 +271,7 @@ public class SchedulingServiceImpl implements SchedulingService{
 				availabilityTechnicalAppointmentsRequest.setBody(bodyAvailability);
 				
 				requestObject.put("availabilityTechnicalAppointmentsRequest", availabilityTechnicalAppointmentsRequest);
-				message = "OK";
+				message = "OK - Fija";
 			} else {
 				message = "NO SE REQUIERE DE VISITA TECNICA";
 			}
@@ -411,10 +409,6 @@ public class SchedulingServiceImpl implements SchedulingService{
 		return svaConVisitaTecnica;
 	}
 	
-	private void getOperacionComercial() {
-		String operacionComercial = "";
-	}
-	
 	private Map<String, Object> buildRequestAvailabilityMT(AvailabiltyTechAppointmentRequestFront request) {
 		
 		Map<String, Object> requestObject = new HashMap<String, Object>();
@@ -519,7 +513,13 @@ public class SchedulingServiceImpl implements SchedulingService{
 		availabilityTechnicalAppointmentsRequest.setHeader(headerAvailability);
 		availabilityTechnicalAppointmentsRequest.setBody(bodyAvailability);
 		
+		String mensaje = "";
+		
+		if(requiereVisitaTecnica) mensaje = "OK - MT";
+		else mensaje = "No requiere visita técnica - MT";
+		
 		requestObject.put("requiereVisitaTecnica", requiereVisitaTecnica);
+		requestObject.put("mensaje", mensaje);
 		requestObject.put("availabilityTechnicalAppointmentsRequest", availabilityTechnicalAppointmentsRequest);
 		
 		return requestObject;
@@ -576,31 +576,6 @@ public class SchedulingServiceImpl implements SchedulingService{
 	}
 	
 	
-	
-	private AvailabilityTechnicalAppointmentsRequest getRequestBodyAva() {//para borrar
-		AvailabilityTechnicalAppointmentsRequest requestBody = new AvailabilityTechnicalAppointmentsRequest();
-		Header headerBody =  new Header();
-		
-		headerBody.setAppName("MOVISTARTOTAL");
-		headerBody.setUser("user_movistarTotal");
-		headerBody.setOperation("availabilityAppointment");
-		headerBody.setMessageId("");
-		headerBody.setTimestamp("");
-		
-		Body body = new Body();
-		body.setCodeOrigin("VF");
-		body.setCoordXclient("-77.0902642");
-		body.setCoordYclient("-12.0386869");
-		body.setCommercialOp("MIGRACION");
-		body.setInternetTech("HFC");
-		body.setCodProductPSI("P004");
-		
-		
-		requestBody.setHeader(headerBody);
-		requestBody.setBody(body);
-		
-		return requestBody;
-	}
 
 	@Override
 	public Response<ScheduleTechnicalAppointmentResponse> getScheduleTechnicalAppointment(
@@ -616,6 +591,8 @@ public class SchedulingServiceImpl implements SchedulingService{
 		return response;
 	}
 	
+	
+	
 	private Response<ScheduleTechnicalAppointmentResponse> callApiScheduleTechnicalAppointment(ScheduleTechnicalAppointmentRequestFront request, int retryCount, Xhttp xhttp) {
 		Response<ScheduleTechnicalAppointmentResponse> response = new Response<>();
 		
@@ -624,12 +601,13 @@ public class SchedulingServiceImpl implements SchedulingService{
 		
 		ScheduleTechnicalAppointmentRequest requestBody = new ScheduleTechnicalAppointmentRequest();
 		
+		requestBody = buildRequestSchedule(request);
 		
-		if(request.getTipoCliente().equals("MT")) {
-			requestBody = buildRequestScheduleMT(request);
-		} else if(request.getTipoCliente().equals("FIJA")) {
-			//buildRequestScheduleFija(request);
-		}
+//		if(request.getTipoCliente().equals("MT")) {
+//			requestBody = buildRequestScheduleMT(request);
+//		} else if(request.getTipoCliente().equals("FIJA")) {
+//			
+//		}
 
 		
 		
@@ -698,84 +676,52 @@ public class SchedulingServiceImpl implements SchedulingService{
 		
 	}
 	
-	private ScheduleTechnicalAppointmentRequest buildRequestScheduleMT(ScheduleTechnicalAppointmentRequestFront requestFront) {
+	private ScheduleTechnicalAppointmentRequest buildRequestSchedule(ScheduleTechnicalAppointmentRequestFront request) {
 		ScheduleTechnicalAppointmentRequest scheduleTechnicalAppointmentRequest = new ScheduleTechnicalAppointmentRequest();
 		
 		tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.request.Header headerSchedule = new tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.request.Header();
 		tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.request.Body bodySchedule = new tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.request.Body();
 		
-		//default
-		
 		String timeStamp = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(new Timestamp(System.currentTimeMillis()));
-		log.info(timeStamp);
 		
-		headerSchedule.setAppName("MOVISTARTOTAL");
-		headerSchedule.setUser("user_movistarTotal");
-		headerSchedule.setOperation("scheduleAppointments");
-		headerSchedule.setMessageId("57559b0c-5755-5755-5755-57559b0ceb0e");
+		headerSchedule.setMessageId(UUID.randomUUID().toString());
 		headerSchedule.setTimestamp(timeStamp);
 		
-		bodySchedule.setOriginCode("MT");
-		bodySchedule.setSaleCode(requestFront.getSaleCode());
-		bodySchedule.setBucket(requestFront.getBucket());
-		bodySchedule.setScheduleDate(requestFront.getScheduleDate());
-		bodySchedule.setScheduleRange(requestFront.getScheduleRange());
-		bodySchedule.setCoordinateX(requestFront.getCoordinateX());
-		bodySchedule.setCoordinateY(requestFront.getCoordinateY());
-		bodySchedule.setDocumentType(requestFront.getDocumentType());
-		bodySchedule.setDocumentNumber(requestFront.getDocumentNumber());
-		bodySchedule.setCustomerName(requestFront.getCustomerName());
-		bodySchedule.setCustomerPatSurname(requestFront.getCustomerPatSurname());
-		bodySchedule.setCustomerMatSurname(requestFront.getCustomerMatSurname());
-		bodySchedule.setCommercialOp(requestFront.getCommercialOp());
-		bodySchedule.setInternetTech(requestFront.getInternetTech());
-		bodySchedule.setTechnologyTV(requestFront.getTechnologyTV());
-		bodySchedule.setCodProductPSI(requestFront.getCodProductPSI());
-
-
+		if(request.getTipoCliente().equals("MT")) {
+			headerSchedule.setAppName("MOVISTARTOTAL");
+			headerSchedule.setUser("user_movistarTotal");
+			headerSchedule.setOperation("scheduleAppointments");
+			
+			bodySchedule.setOriginCode("MT");
+		} else if(request.getTipoCliente().equals("FIJA")) {
+			headerSchedule.setAppName("VENTASFIJA");
+			headerSchedule.setUser("user_ventasFija");
+			headerSchedule.setOperation("scheduleAppointments");
+			
+			bodySchedule.setOriginCode("VF");
+		}
+		
+		bodySchedule.setSaleCode(request.getSaleCode());
+		bodySchedule.setBucket(request.getBucket());
+		bodySchedule.setScheduleDate(request.getScheduleDate());
+		bodySchedule.setScheduleRange(request.getScheduleRange());
+		bodySchedule.setCoordinateX(request.getCoordinateX());
+		bodySchedule.setCoordinateY(request.getCoordinateY());
+		bodySchedule.setDocumentType(request.getDocumentType());
+		bodySchedule.setDocumentNumber(request.getDocumentNumber());
+		bodySchedule.setCustomerName(request.getCustomerName());
+		bodySchedule.setCustomerPatSurname(request.getCustomerPatSurname());
+		bodySchedule.setCustomerMatSurname(request.getCustomerMatSurname());
+		bodySchedule.setCommercialOp(request.getCommercialOp());
+		bodySchedule.setInternetTech(request.getInternetTech());
+		bodySchedule.setTechnologyTV(request.getTechnologyTV());
+		bodySchedule.setCodProductPSI(request.getCodProductPSI());
+		
 		scheduleTechnicalAppointmentRequest.setHeader(headerSchedule);
 		scheduleTechnicalAppointmentRequest.setBody(bodySchedule);
 		
 		return scheduleTechnicalAppointmentRequest;
 		
-	}
-	
-	
-	private ScheduleTechnicalAppointmentRequest getRequestBodySch() {
-		ScheduleTechnicalAppointmentRequest requestBody = new ScheduleTechnicalAppointmentRequest();
-		
-		tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.request.Header headerBody =  new tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.request.Header();
-		
-		
-		headerBody.setAppName("MOVISTARTOTAL");
-		headerBody.setUser("user_movistarTotal");
-		headerBody.setOperation("scheduleAppointments");
-		headerBody.setMessageId("57559b0c-5755-5755-5755-57559b0ceb0e");
-		headerBody.setTimestamp("2019-11-21T04:21:32.518");
-
-		
-		tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.request.Body body = new tdp.backend.mt.fija.main.restclient.scheduleTechAppointment.request.Body();
-		body.setOriginCode("VF");
-		body.setSaleCode("-LpeiZcPQKfAfiw4slNe");
-		body.setBucket("BK_COBRA_ZONA5_SJ_MASIVO");
-		body.setScheduleDate("2020-01-05");
-		body.setScheduleRange("AM");
-		body.setCoordinateX("-77.0902642");
-		body.setCoordinateY("-12.0386869");
-		body.setDocumentType("DNI");
-		body.setDocumentNumber("23451623");
-		body.setCustomerName("RODRIGO");
-		body.setCustomerPatSurname("PORTILLA");
-		body.setCustomerMatSurname("IBARRA");
-		body.setCommercialOp("Alta Componente BA");
-		body.setInternetTech(null);
-		body.setTechnologyTV(null);
-		body.setCodProductPSI("P004");
-		
-		requestBody.setHeader(headerBody);
-		requestBody.setBody(body);
-		
-		return requestBody;
 	}
 
 	@Override
@@ -797,12 +743,8 @@ public class SchedulingServiceImpl implements SchedulingService{
 		UpdateCustomerClient client = new UpdateCustomerClient(new ClientConfig());
 		
 		UpdateCustomerRequest requestBody = new UpdateCustomerRequest();
-		
-		if(request.getTipoCliente().equals("MT")) {
-			requestBody = buildRequestUpdateCustomerMT(request);
-		} else if(request.getTipoCliente().equals("FIJA")) {
-			//buildRequestUpdateCustomerFija(request);
-		}
+
+		requestBody = buildRequestUpdateCustomer(request);
 		//requestBody = getRequestBodyUpdate(); //mock
 		
 		Timestamp dateTimeRequest = UtilMethods.getFechaActual();
@@ -865,65 +807,42 @@ public class SchedulingServiceImpl implements SchedulingService{
 		
 	}
 	
-	private UpdateCustomerRequest buildRequestUpdateCustomerMT(UpdateCustomerRequestFront requestFront) {
+	private UpdateCustomerRequest buildRequestUpdateCustomer(UpdateCustomerRequestFront request) {
 		UpdateCustomerRequest updateCustomerRequest = new UpdateCustomerRequest();
 		
 		tdp.backend.mt.fija.main.restclient.updateCustomer.request.Header headerUpdate = new tdp.backend.mt.fija.main.restclient.updateCustomer.request.Header();
 		tdp.backend.mt.fija.main.restclient.updateCustomer.request.Body bodyUpdate = new tdp.backend.mt.fija.main.restclient.updateCustomer.request.Body();
 		
-		//default
-		
 		String timeStamp = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(new Timestamp(System.currentTimeMillis()));
-		log.info(timeStamp);
 		
-		headerUpdate.setAppName("MOVISTARTOTAL");
-		headerUpdate.setUser("user_movistarTotal");
-		headerUpdate.setOperation("updateContact");
-		headerUpdate.setMessageId("57559b0c-5755-5755-5755-57559b0ceb0e");
+		headerUpdate.setMessageId(UUID.randomUUID().toString());
 		headerUpdate.setTimestamp(timeStamp);
 		
-		bodyUpdate.setPsiCode(requestFront.getPsiCode());
-		bodyUpdate.setEmail(requestFront.getEmail());
-		bodyUpdate.setContacts(requestFront.getContacts());
+		if(request.getTipoCliente().equals("MT")) {
+			headerUpdate.setAppName("MOVISTARTOTAL");
+			headerUpdate.setUser("user_movistarTotal");
+			headerUpdate.setOperation("updateContact");
+			
+		} else if(request.getTipoCliente().equals("FIJA")) {
+			headerUpdate.setAppName("VENTASFIJA");
+			headerUpdate.setUser("user_ventasFija");
+			headerUpdate.setOperation("updateContact");
+			
+		}
+		
+		bodyUpdate.setPsiCode(request.getPsiCode());
+		bodyUpdate.setEmail(request.getEmail());
+		bodyUpdate.setContacts(request.getContacts());
 		
 		updateCustomerRequest.setHeader(headerUpdate);
 		updateCustomerRequest.setBody(bodyUpdate);
-
+		
+		
 		
 		return updateCustomerRequest;
-		
 	}
 	
-	private UpdateCustomerRequest getRequestBodyUpdate() {
-		
-		UpdateCustomerRequest requestBody = new UpdateCustomerRequest();
-		
-		tdp.backend.mt.fija.main.restclient.updateCustomer.request.Header headerBody =  new tdp.backend.mt.fija.main.restclient.updateCustomer.request.Header();
-		
-		headerBody.setAppName("VENTASFIJA");
-		headerBody.setUser("user_ventasFija");
-		headerBody.setOperation("updateContact");
-		headerBody.setMessageId("57559b0c-5755-5755-5755-57559b0ceb0e");
-		headerBody.setTimestamp("2019-02-11T17:13:11.533");
-		
-		tdp.backend.mt.fija.main.restclient.updateCustomer.request.Body body = new tdp.backend.mt.fija.main.restclient.updateCustomer.request.Body();
-
-		body.setPsiCode("VF902");
-		body.setEmail("prueba@gmail.com");
-		
-		Contacts contact = new Contacts();
-		contact.setFullName("wilson lazo");
-		contact.setPhoneNumber("984101010");
 
 		
-		List<Contacts> contacts = new ArrayList<Contacts>();
-		contacts.add(contact);
-		
-		body.setContacts(contacts);
-		
-		requestBody.setHeader(headerBody);
-		requestBody.setBody(body);
-		
-		return requestBody;
-	}
 }
+	
